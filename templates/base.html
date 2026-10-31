@@ -21,6 +21,8 @@
         {% if user.is_authenticated and user.is_active %}
           {% if user.role == 'ADMIN' or user.role == 'STAFF' %}
             <a href="{% url 'catalog:customer_list' %}" {% if 'catalog:customer' in request.resolver_match.view_name %}aria-current="page"{% endif %}><span aria-hidden="true">👥</span> Customers</a>
+            <a href="{% url 'billing:tax_list' %}" {% if 'billing:tax' in request.resolver_match.view_name %}aria-current="page"{% endif %}><span aria-hidden="true">🏷</span> Tax Rates</a>
+            <a href="{% url 'billing:discount_list' %}" {% if 'billing:discount' in request.resolver_match.view_name %}aria-current="page"{% endif %}><span aria-hidden="true">🎟</span> Discounts</a>
           {% endif %}
         {% endif %}
         {% if user.is_authenticated and user.is_active and user.role == 'ADMIN' and user.is_staff %}

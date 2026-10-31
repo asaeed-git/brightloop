@@ -45,9 +45,10 @@ used for development and tests as well as planned hosting so concurrency tests a
 | templates/core/home.html | Syed | Implemented workspace welcome screen |
 | templates/base.html, core/static/ | Syed | Implemented shared UI shell & design system |
 | catalog/, plans/, subscriptions/ | Abbas | Catalog implemented; plans/subscriptions pending |
-| pricing/ | Syed | Pure calculator implemented on arhan/pricing-calculator; review pending |
-| billing/, payments/, reporting/ | Syed | Planned modules |
-| docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.2, shared-ui, financial proposal |
+| pricing/ | Syed | Pure calculator implemented and pushed on arhan/pricing-calculator |
+| billing/ | Syed | TaxRate & DiscountRule configuration models, forms, and admin/staff views implemented on arhan/billing-config; recurring billing pending |
+| payments/, reporting/ | Syed | Planned modules |
+| docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.2, shared-ui, financial proposal, pricing |
 
 Keep views thin, validation in forms or explicit input validators, business operations in
 service functions, and database constraints in models/migrations. Use the ORM and parameterized
@@ -79,7 +80,8 @@ other developer's duty to enforce permissions, write relevant tests, and explain
 Financial proposal v0.1 was approved as written according to the user's report above.
 Its exact allocation and final-period rules supersede the previously open entries below.
 These are application policies, not organizer mandates. Approval is not implementation;
-only the pure calculator is added in this branch, with its boundary in docs/contracts/pricing.md.
+the pure calculator is added in pricing/services.py, and tax/discount configuration tables
+and management views are added in billing/.
 
 | Topic | Candidate default |
 | --- | --- |
@@ -103,8 +105,8 @@ only the pure calculator is added in this branch, with its boundary in docs/cont
 
 Fixed discount allocation uses largest remainder in cents, ties by stable charge ID;
 percentage discounts and tax use per-line half-up rounding. See financial-proposal.md
-for approved examples and pricing.md for the implemented calculator. Tax/discount
-configuration tables, eligibility/reservation, billing/invoices/payments remain unimplemented.
+for approved examples, pricing.md for the implemented calculator, and billing/ for configuration
+models and views. Eligibility/reservation, billing/invoices/payments remain unimplemented.
 Shared schemas, API consumers, and lifecycle locking still require coordinated implementation.
 
 ## Operations and deployment direction

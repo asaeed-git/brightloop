@@ -1,6 +1,39 @@
 # Syed Arhan: incoming work
 
-## Current checkpoint: B2 calculator and A2/A3 review
+## Current checkpoint: B2 Tax and Discount Configuration
+
+October 31, 2026. Branch arhan/billing-config, based on arhan/pricing-calculator (3ec3956).
+Previous calculator increment was committed and pushed to origin/arhan/pricing-calculator.
+
+Implemented `billing` app for B2 tax and discount configuration:
+- `billing/models.py`:
+  - `TaxRate`: name, rate (0.00–100.00), is_active flag, check constraints preventing negative or >100 rates.
+  - `DiscountRule`: name, kind (FIXED / PERCENTAGE), value, scope (SUBSCRIPTION / PRODUCT), product FK, min_eligible_gross, valid_from/valid_until, max_uses, is_active. Check constraints enforce positive value, scope-product exclusivity, valid date ordering, non-negative threshold.
+- `billing/forms.py`: `TaxRateForm` and `DiscountRuleForm` with cent-precision validation, percentage range guards, scope consistency checks, and date range coherence.
+- `billing/views.py`: Admin/Staff-only CRUD views for Tax Rates and Discount Rules (`tax_list`, `tax_create`, `tax_edit`, `discount_list`, `discount_create`, `discount_edit`), protected by `accounts.permissions.require_roles`.
+- `billing/urls.py`: nested routes mounted at `/billing/`.
+- `billing/admin.py`: standard Django admin integration with filters and search.
+- `billing/migrations/0001_initial.py`: generated and applied cleanly against local PostgreSQL.
+- `templates/billing/`: responsive, accessible views for tax and discount lists and forms using the shared UI design system and `components/form_fields.html`.
+- `templates/base.html`: added role-aware sidebar navigation links for Tax Rates and Discounts (visible to Staff/Admin).
+- `billing/tests.py`: 29 comprehensive unit tests covering models, check constraints, forms, views, and permission boundaries.
+- `core/test_ui.py`: added regression test verifying billing navigation visibility across all role/activity combinations.
+
+Verification actually run:
+- Applied `billing.0001_initial` migration to private local PostgreSQL cluster.
+- Full test suite: 111 tests passed in ~3.4s against local PostgreSQL.
+- Ruff lint (`ruff check .`) and formatting (`ruff format --check .`): all passed, 0 errors.
+- Pip dependency check (`pip check`): no broken requirements found.
+- Django system check (`manage.py check`): 0 issues identified.
+- Static collection (`manage.py collectstatic --noinput`): 128 assets unmodified.
+- Migration consistency (`makemigrations --check --dry-run`): no changes detected.
+
+Next:
+- Commit and push `arhan/billing-config` branch.
+- Wait for Abbas's A4 (Plans & Quotations) to integrate the B2 calculation service with quotation previews and subscription billing lines.
+- Proceed to B3 recurring billing and B4 invoice generation.
+
+## Previous checkpoint: B2 pure calculator and A2/A3 review (committed in 3ec3956)
 
 October 31, 2026. Branch arhan/pricing-calculator, based on origin/main a8df082.
 Abbas merged our prior UI in 8979d98, then added A2 auth and A3 catalog. The workspace
@@ -34,89 +67,10 @@ Verification actually run:
   have no horizontal page overflow. Full authenticated business workflows and scale timings
   were not browser-tested. Automated incoming auth/catalog tests ran in the final suite.
 
-New files: pricing/{__init__,services,tests}.py, docs/contracts/pricing.md,
-docs/reviews/a2-a3-review.md. Existing UI, financial docs, README and handoff updated.
-No commit or push yet. Use the project .venv Python 3.14.4, not system Python 3.15.
-Next: review/integrate the calculator with Abbas's forthcoming quote consumer, coordinate
-tax/discount persistence and reservations, and fix the recorded backend issues through Abbas.
-
 ## Previous B1 checkpoint (historical)
-
-## Active local checkpoint — October 31, 2026
 
 Cloned origin/main at 3b88994 into C:\Users\LENOVO\Desktop\brightloop\shared;
 working branch arhan/shared-ui. Prior planning files remain in the parent folder.
 Implemented independent B1 UI; financial rules and full M0 approval remain pending.
 User authorized continuing Developer 2 development from this repository, not approval
 of unspecified financial defaults. No financial implementation or schema was added.
-
-### Changes ready for review
-
-- templates/base.html: responsive shell, role-aware implemented navigation, notifications.
-- templates/core/home.html: replacement welcome page, explicit unbuilt-feature status.
-- templates/components/: bound Django form rendering and empty states.
-- core/static/brightloop/app.css: shared styles via existing app static discovery;
-  no global settings, auth, dependencies or migrations changed.
-- core/test_ui.py: five tests covering role visibility, actual links, static discovery,
-  accessible bound errors, hidden/non-field errors, and output escaping.
-- docs/contracts/shared-ui.md: proposed integration interface and usage for Abbas.
-- docs/contracts/financial-proposal.md: calculator boundary, allocation/rounding examples,
-  final-period charging proposal and transactional requirements; no approvals claimed.
-
-### Local setup and verification actually performed
-
-Pinned Python 3.14.4 installed under ignored .local/python314 after verifying the official
-installer's signature. The existing system Python 3.15.2 was not replaced and PATH was
-not changed. Created .venv and installed the exact requirements.txt pins.
-PostgreSQL 17.11 was already installed. Initialized this checkout's private cluster on
-127.0.0.1:55432 with the supplied helper; credentials remain in ignored .env/.local.
-No administrator account was created and the system PostgreSQL service was not changed.
-
-Passed on this machine:
-- manage.py migrate; manage.py check; manage.py makemigrations --check --dry-run.
-- manage.py test --settings=config.test_settings: 23 tests, 0.696s reported by runner.
-  Eighteen existing tests use PostgreSQL; five new UI rendering tests use SimpleTestCase.
-- python -m ruff check .; python -m ruff format --check .; python -m pip check.
-- manage.py collectstatic --noinput: 128 assets collected.
-- Project database stop/start, scripts/local_postgres.py check, manage.py migrate --check:
-  connectivity and persisted migration history survived restart.
-- Browser: home and CSS HTTP 200, admin sign-in link opens the actual login form;
-  desktop 1440px and mobile 390px inspected, no horizontal overflow at those widths.
-  Screenshot: ignored tmp/ui/home-desktop.png. This is not a scale/performance test.
-- git diff --check and exclusion of .env/.local/.venv/tmp confirmed.
-
-Initial restricted dependency downloads and database connections failed due to sandbox
-network permissions; reruns with granted access passed. No SQLite fallback was used.
-Shared UI review by Abbas, live authenticated browser journeys, invoice screens, full
-accessibility audit, business workflows and scale timings remain outstanding.
-
-### Resume
-
-Use .venv/Scripts/python.exe from this checkout (plain python selects system 3.15.2).
-README commands apply after the local environment is created; do not run init again.
-The preview server and project database were stopped after QA. Start the project
-database with scripts/local_postgres.py start before running the application or tests.
-User requested committing and pushing arhan/shared-ui. This checkpoint is included
-in the UI commit; use git log/status and origin/arhan/shared-ui to verify publication.
-No merge or remote CI result for this branch is claimed. Abbas's prior remote CI
-result is not evidence for these changes.
-
-Next: both developers review shared-ui.md and financial-proposal.md, settle the remaining
-M0/domain decisions and record actual approvals/common commit. Then integrate one of
-Abbas's auth forms with the UI; implement the shared calculator and quote consumer,
-followed by the narrow persisted invoice/payment journey. Do not duplicate Abbas's
-identity/subscription/outbox services or implement proposed financial defaults silently.
-
-## Original incoming notes
-
-This is an incoming handoff prepared by Abbas's agent, not a report of Syed's work or approval.
-
-First read AGENTS.md, WORK_DIVISION.md, FOUNDATION.md, docs/contracts/platform.md, and the root
-handoff. Use the same starter repository/files, not a separate Django project. Run README setup
-on your machine and report actual results. Do not copy .env, .venv, or .local from Abbas's machine.
-
-Next: review candidate foundation 0.1; confirm exact pricing/discount/final-period policies with
-Abbas; develop the shared UI under templates/base.html and static/ once the baseline is accepted.
-Replace the minimal home template as part of B1. Billing-related modules and domain schemas have
-not been created; coordinate those before introducing independent contracts. Own B1–B6 as listed
-in WORK_DIVISION.md. Record your own branch, verification, and status here when you begin.
