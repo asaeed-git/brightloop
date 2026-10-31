@@ -37,13 +37,13 @@ used for development and tests as well as planned hosting so concurrency tests a
 | Path | Owner | Status |
 | --- | --- | --- |
 | config/, manage.py, scripts/, requirements*, .github/ | Abbas, cross-team review | Implemented platform |
-| accounts/ | Abbas | User model, validator, permissions, admin implemented; public flows pending |
+| accounts/ | Abbas | User model, validator, permissions, admin, public auth flows, throttling implemented |
 | core/ | Abbas | Home/readiness endpoints |
-| templates/core/home.html | Abbas initial placeholder; Syed replaces during B1 | Minimal foundation screen |
-| templates/base.html, static/ | Syed | Planned shared UI; not created |
-| catalog/, plans/, subscriptions/ | Abbas | Planned modules; not created |
-| pricing/, billing/, payments/, reporting/ | Syed | Planned modules; not created |
-| docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Initial platform/domain drafts |
+| templates/core/home.html | Syed | Implemented workspace welcome screen |
+| templates/base.html, core/static/ | Syed | Implemented shared UI shell & design system |
+| catalog/, plans/, subscriptions/ | Abbas | Planned modules |
+| pricing/, billing/, payments/, reporting/ | Syed | Planned modules |
+| docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.2, shared-ui, financial proposal |
 
 Keep views thin, validation in forms or explicit input validators, business operations in
 service functions, and database constraints in models/migrations. Use the ORM and parameterized

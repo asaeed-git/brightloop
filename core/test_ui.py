@@ -15,9 +15,11 @@ class SharedUITests(SimpleTestCase):
         request.resolver_match = resolve("/")
         return render_to_string("core/home.html", request=request)
 
-    def test_anonymous_has_real_sign_in_route_and_no_administration_menu(self):
+    def test_anonymous_shows_sign_in_and_sign_up_links_and_no_administration_menu(self):
+        """Anonymous visitors see the public auth links; admin nav is absent."""
         html = self.render_home(AnonymousUser())
-        self.assertIn('href="/admin/login/"', html)
+        self.assertIn('href="/accounts/login/"', html)
+        self.assertIn('href="/accounts/signup/"', html)
         self.assertNotIn('href="/admin/"', html)
         self.assertIn('href="#main-content"', html)
         self.assertIsNotNone(finders.find("brightloop/app.css"))

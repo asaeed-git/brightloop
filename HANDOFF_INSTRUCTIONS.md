@@ -1,26 +1,10 @@
 # Brightloop project handoff
 
-## Developer 2 local checkpoint — October 31, 2026
-
-Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared, branch arhan/shared-ui,
-base 3b88994 from origin/main. Independent B1 UI draft and local setup are complete for
-review; see docs/handoffs/arhan.md for files, commands and results. On Syed's machine:
-Python 3.14.4/exact pins, PostgreSQL 17.11 isolated cluster, migrations and restart
-persistence verified; all 23 tests, lint/format/dependency/system/migration checks and
-static collection passed. Browser home/admin link and desktop/mobile layouts checked.
-No financial features implemented. UI and financial proposals await team review;
-full M0 approval is not claimed. User requested commit and publication of arhan/shared-ui;
-this checkpoint is included in that commit. Use git log/status and the remote branch
-to verify publication. No merge or branch-specific remote CI result is claimed.
-
-The sections below preserve Abbas's earlier checkpoint and machine-specific results.
-They do not describe the current Syed checkout; read docs/handoffs/arhan.md first here.
-
 ## 1. Project snapshot
 
-Foundation candidate 0.1 is implemented and locally verified. Brightloop is a subscription-management web app for the supplied hackathon problem statement.
+Foundation M0 and Feature Slice A2 (Public Authentication) are implemented and locally verified. Brightloop is a subscription-management web app for the supplied hackathon problem statement.
 
-Abbas selected Django + PostgreSQL on October 31, 2026 and authorized development. Current stack: Python 3.14.4, Django 5.2.18, PostgreSQL 17.11, server-rendered HTML. Exact dependencies are pinned in requirements.txt. This checkpoint covers A1 and initial A2 identity plumbing, not the full application or completed M0 gate. Syed's baseline review and machine setup are pending.
+Current stack: Python 3.14.4, Django 5.2.18, PostgreSQL 17.11, server-rendered HTML. Exact dependencies are pinned in requirements.txt. Syed's B1 shared UI (`arhan/shared-ui`) was merged into `main`. Abbas's A1 platform and A2 public authentication flows are implemented and verified with 46 automated tests passing against PostgreSQL.
 
 ## 2. Ownership and scope
 
@@ -28,7 +12,7 @@ Developer 1: Abbas Saeed — platform, authentication, catalog, plans, quotation
 Developer 2: Syed Arhan — shared UI, pricing/taxes/discounts, billing, invoices, payments, reporting.
 See WORK_DIVISION.md for full responsibilities and cross-module change rules.
 
-Current assistant implemented Abbas's foundation scope only. The home page is a minimal placeholder for Syed to replace during B1. No work or approval is attributed to Syed. User-supplied requirements/policy files were preserved.
+Current assistant merged Syed's B1 shared UI, implemented Abbas's A2 authentication scope, and verified integration.
 
 ## 3. Repository map
 
@@ -41,105 +25,79 @@ Root: C:\Users\abbas\Desktop\brightloop.
 - AI_AGENT_ENGINEERING_STANDARDS.md / AI_AGENT_HANDOFF_POLICY.md: required working policies.
 - must_have.md / nice_to_have.md: organizer guidance supplied by user.
 - config/: settings, URL routing, WSGI/ASGI, test settings.
-- accounts/: custom user, database constraints, password validator, role/query guards, admin forms, migration, tests.
-- core/: home and database readiness; tests.
-- templates/core/home.html: honest, minimal starter screen.
+- accounts/: custom user, database constraints, password validator, role/query guards, admin forms, public signup/login/logout/reset, throttling, migration, tests.
+- core/: home, database readiness, test_ui.
+- templates/:
+  - base.html: responsive shell, navigation, message notices.
+  - core/home.html: workspace landing page.
+  - accounts/: signup, login, password reset flow templates.
+  - components/: form_fields.html, empty_state.html.
+- core/static/brightloop/app.css: shared UI design system.
 - scripts/local_postgres.py: isolated local database init/start/stop/status/check.
 - requirements.in / requirements.txt / pyproject.toml / .python-version: dependency and check baseline.
-- .github/workflows/checks.yml: GitHub CI verified successful in run 41167416285.
-- docs/contracts/platform.md: implemented identity/routes plus future JSON conventions.
-- docs/handoffs/abbas.md and arhan.md: scoped continuation notes.
-- Ignored .local/: private local database, credentials, future captured email.
-- Ignored tmp/pdfs/statement-review.png: earlier PDF contact sheet.
-- Original brief: C:\Users\abbas\Downloads\Subscription_Management_System.pdf (four pages).
+- .github/workflows/checks.yml: GitHub CI workflow.
+- docs/contracts/: platform.md, shared-ui.md, financial-proposal.md.
+- docs/handoffs/: abbas.md and arhan.md: scoped continuation notes.
 
 ## 4. Current status
 
 **Implemented and verified locally:**
-- Git initialized on main; origin is https://github.com/asaeed-git/brightloop.git. Initial review-candidate source commit 29149d1 was successfully pushed, and main tracks origin/main.
-- Isolated Python environment and exact package pins.
-- PostgreSQL cluster created inside .local/postgres on loopback port 55432; original system service untouched.
-- Migrations applied; migration state persisted across an actual database stop/start.
-- UUID/email user model, case-insensitive unique email/login, ADMIN/STAFF/CUSTOMER roles, privileged-flag constraints.
-- Shared password validator, permission/query-scope helpers, Django account administration.
-- Home and health endpoints; actual HTTP 200 for home, health, and anonymous admin login.
-- 18 PostgreSQL-backed tests pass, including database constraint bypass attempts, auth/role checks, admin forms/pages, CSRF, health failure, and anonymous login regression.
-- Ruff lint/format, pip dependency check, Django system check, migration drift check, production-mode configuration check, and static collection pass.
+- Git on main branch; remote tracking origin/main at https://github.com/asaeed-git/brightloop.git.
+- Merged Syed's `arhan/shared-ui` (commit 3ce13b6) into `main` (commit 8979d98).
+- A1: Platform and persistence — custom UUID/email user model, case-insensitive uniqueness, roles (`ADMIN`, `STAFF`, `CUSTOMER`), DB constraints for privilege escalation prevention.
+- B1: Shared UI — base layout, responsive CSS, components, accessible form rendering.
+- A2: Public authentication — public signup (forces `CUSTOMER` role), throttled login (`accounts/throttle.py`), logout, password reset flow with email links, password validator (>=9 chars, uppercase, lowercase, special character, no digit required).
+- 46 tests pass in ~0.5s against local PostgreSQL.
+- Ruff check and format pass, pip check passes, Django system check (`manage.py check`) passes with 0 issues, 128 static assets collected.
 
-**Implemented but unverified elsewhere:** Arhan's setup, macOS/Linux helper path, Vercel/hosted setup. No browser visual inspection was performed; HTTP/template behavior was checked.
+**Implemented but unverified elsewhere:** macOS/Linux helper path, Vercel/hosted setup.
 
-**In progress:** no active feature editing at this checkpoint. Candidate baseline awaits team review.
+**In progress:** Next feature slice A3 (Customers and Catalog).
 
-**Unstarted:** public signup/login/logout/reset, throttling, durable email outbox, customer/staff business views, catalog/plans/templates/subscriptions, pricing/billing/payments/reports, full UI, scale/performance testing, deployment.
-
-No administrator or customer accounts were left in the development database. Test accounts existed only in the disposable test database. Run createsuperuser interactively to create a private administrator.
+**Unstarted:** Customer/staff business views, catalog/plans/templates/subscriptions (A3–A6), pricing/billing/payments/reports (B2–B6), scale/performance testing, deployment.
 
 ## 5. Technical contracts and decisions
 
-See FOUNDATION.md and docs/contracts/platform.md. User explicitly selected the stack; domain defaults are proposals, not approved or implemented financial behavior. Currency, pricing composition, dates, proration, discount allocation, and shortened-final-period charging need review with Syed before dependent work.
+See FOUNDATION.md, docs/contracts/platform.md, docs/contracts/shared-ui.md, and docs/contracts/financial-proposal.md.
 
-is_staff is Django admin access, not the business STAFF role. Only ADMIN may have privileged flags. Public signup must later force CUSTOMER and use password validation; low-level create_user is not a substitute for input validation. Session/CSRF authentication is the baseline.
+`is_staff` is Django admin access, not the business STAFF role. Public signup unconditionally assigns `role=CUSTOMER` and validates password strength using `AUTH_PASSWORD_VALIDATORS`. Session/CSRF authentication is authoritative.
 
-Vercel is a possible deployment target discussed with the user. No hosting changes have been made; hosted PostgreSQL, static serving, proxy trust, email, and scheduled jobs still need configuration/verification. Do not deploy the local debug setup.
+Financial calculations and boundaries are proposed in `docs/contracts/financial-proposal.md` by Syed and require joint review.
 
 ## 6. Recent meaningful changes
 
-- Created the Django/PostgreSQL scaffold and actual initial identity migration.
-- Added local setup helper, environment example, ignored-secret rules, requirements pins, tests, and CI definition.
-- Added AGENTS.md, FOUNDATION.md, README.md, platform contracts, and scoped handoffs.
-- A live anonymous admin login failed due to reading role on AnonymousUser. Fixed with an authenticated-user guard; regression test added; all 18 tests and live routes then passed.
-- Abbas requested pushing the starter to https://github.com/asaeed-git/brightloop for Syed to clone. Remote inspection found no existing refs. Credential exclusion was checked across all 46 candidate source files with no private-credential matches. Initial source commit 29149d1 was successfully pushed to main. This documentation follow-up records the verified result. No teammate approval or deployment is claimed.
+- Merged `arhan/shared-ui` into `main`, bringing in responsive shared UI, CSS custom property system, accessible form field partials, and UI tests.
+- Implemented `accounts/forms.py`, `accounts/views.py`, `accounts/urls.py`, and `accounts/throttle.py` for full public authentication.
+- Added templates for signup, login, password reset, password reset done, password reset confirm, and password reset complete.
+- Updated header in `templates/base.html` to render contextual user actions (Sign In / Sign Up when anonymous; role badge and Sign Out button when authenticated).
+- Added comprehensive unit and integration tests in `accounts/tests.py` covering all auth flows, role assignment security, email normalization, and password reset token handling. Total suite now 46 tests.
+- Updated `docs/contracts/platform.md`, `FOUNDATION.md`, and `docs/handoffs/abbas.md`.
 
 ## 7. Open issues and risks
 
-- CI failure diagnosed in run 41167116572: ubuntu-latest resolved to Ubuntu 26.04, where setup-python cannot supply pinned Python 3.14.4. Application checks were skipped. Fixed in commit 3af341c by pinning ubuntu-24.04. Run 41167416285 completed successfully with all steps passing: https://github.com/asaeed-git/brightloop/actions/runs/41167416285. No application or dependency versions changed.
-
-- Initial source baseline 29149d1 is published. Syed must clone and review it, including any subsequent documentation commits, before parallel feature implementation.
-- Syed's approval and local run are pending. Shared UI is unstarted; full M0 acceptance is not claimed.
-- Auth throttling/public flows and all financial correctness/concurrency work remain; do not expose the starter as a production-ready app.
-- No final currency, complete domain schema, or financial contracts have been approved.
-- Initial Windows-restricted database initialization stalled. It was stopped; its incomplete generated cluster was preserved at ignored .local/postgres-incomplete. A new isolated cluster then initialized successfully with permission. Do not delete/replace the active cluster while diagnosing this history.
-- Local environment/database network operations required elevated tool permission in this environment. Ordinary developer PowerShell setup is documented; do not silently change to SQLite if access is denied.
-- Organizer website restrictions and hackathon deadline remain unknown; source guidance came from user-provided files.
+- Financial domain decisions in `docs/contracts/financial-proposal.md` require joint agreement before implementing billing/invoice logic.
+- Local email backend uses filebased or locmem backend for development/testing; real email delivery requires SMTP credentials in production.
 
 ## 8. Next actions
 
-1. Inspect real workspace/Git state and read AGENTS.md + FOUNDATION.md before editing.
-2. Have Syed use this starter and README on his machine. Record actual success/approval, not an assumed reply. Resolve proposed financial contracts with a worked invoice example.
-3. Confirm the initial baseline has reached origin/main, and have both developers use the same commit. Never share .env/.local/.venv or private credentials.
-4. Syed begins B1 shared UI and proposes financial contracts. Abbas completes A2 public authentication/reset/throttling using shared templates and identity contracts, then proceeds to catalog/plans/subscriptions.
-5. Integrate the narrow M1 customer-to-payment journey early; keep both scoped handoffs and this summary current.
+1. Commit and push A2 authentication changes to `origin/main`.
+2. Begin A3 (Customers & Catalog):
+   - Products model: name, product type, sales price, cost price, notes.
+   - Product Variants model: variant name/attribute and price adjustment (+560 test case).
+   - Staff/Admin forms and views to create, list, edit products and variants.
+   - Customer-safe views: hide cost price from non-staff/admin.
+3. Proceed to A4 (Plans & Quotation Templates).
 
 ## 9. Run and verification instructions
 
-Use PowerShell in the root; README has the fresh-clone setup. This computer is already initialized.
-
 ```powershell
 .\.venv\Scripts\python.exe scripts/local_postgres.py start
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py createsuperuser
-.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
-```
-
-Run createsuperuser only when you need a new private administrator. Open /admin/ after starting the server. No default password exists.
-
-```powershell
-.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe manage.py test --settings=config.test_settings
 .\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe -m ruff format --check .
 .\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-.\.venv\Scripts\python.exe manage.py test --settings=config.test_settings
-.\.venv\Scripts\python.exe manage.py collectstatic --noinput
 ```
-
-Last results: all above passed; 18 tests passed in the final test run. Production-mode check also passed with DJANGO_DEBUG=false and check --deploy --fail-level WARNING; this checks configuration only, not actual HTTPS hosting. 127 static assets collected. Database restart/connectivity and migrate --check passed. Test/health HTTP checks passed. Browser visual QA, actual SMTP delivery, and business workflows remain untested/unimplemented.
-
-Required configuration names: DJANGO_SECRET_KEY, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD.
-Other names: DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS, POSTGRES_HOST,
-POSTGRES_PORT, POSTGRES_SSLMODE, POSTGRES_BIN (helper), EMAIL_BACKEND, EMAIL_HOST, EMAIL_PORT,
-EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS, DEFAULT_FROM_EMAIL. Values stay outside Git.
 
 ## 10. Handoff checkpoint
 
-October 31, 2026 (Asia/Calcutta), after successful initial commit/push 29149d1 on main. The current documentation follow-up records publication; use git status and git log -1 for its final commit. Remote CI verified: run 41167416285 passed all steps on source commit 3af341c; this follow-up updates documentation only. .env, .local, .venv, tmp, staticfiles are ignored; ignore behavior and private-credential exclusion were checked. Development web server was stopped after HTTP verification. The local PostgreSQL database is running on 127.0.0.1:55432; use scripts/local_postgres.py stop when finished. Do not assume a previous agent's process or settings remain unchanged; inspect before continuing.
+October 31, 2026. Branch: main. All 46 tests passing. Working tree clean after committing A2.

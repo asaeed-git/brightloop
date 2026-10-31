@@ -1,15 +1,21 @@
-# Platform contract v0.1 (implemented)
+# Platform contract v0.2 (implemented)
 
 ## Routes
 
 | Route | Method | Response / access |
 | --- | --- | --- |
-| / | GET | Public HTML foundation screen; no customer data |
+| / | GET | Public HTML foundation screen; role-aware actions |
 | /health/ | GET | 200 `{"status":"ok"}` if database responds; generic 503 otherwise |
-| /admin/ | Django administration | Authenticated active ADMIN with Django administration permission |
+| /admin/ | Django administration | Authenticated active ADMIN with Django administration permission (`is_staff=True`) |
+| /accounts/signup/ | GET, POST | Public registration; always creates `CUSTOMER` role; redirects to home on success |
+| /accounts/login/ | GET, POST | Session authentication; rate-limited (10/5m); email normalized |
+| /accounts/logout/ | POST | Session termination; redirects to home |
+| /accounts/password-reset/ | GET, POST | Rate-limited (5/10m); sends single-use token via email without leaking account existence |
+| /accounts/password-reset/sent/ | GET | Confirmation page after password reset request |
+| /accounts/reset/<uidb64>/<token>/ | GET, POST | Password reset confirm; validates token, sets new password |
+| /accounts/reset/complete/ | GET | Password reset completion confirmation |
 
-Other methods on root/health return 405. Admin POSTs require CSRF. There are no customer API routes,
-signup routes, reset routes, subscription routes, or financial endpoints yet. Do not infer them from plans.
+Other methods return 405. All POSTs require CSRF protection.
 
 ## User and permissions
 

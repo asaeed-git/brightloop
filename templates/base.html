@@ -30,8 +30,13 @@
         <div class="account-label">
           {% if user.is_authenticated and user.is_active %}
             <span class="badge">{{ user.get_role_display }}</span>
+            <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;margin-left:10px">
+              {% csrf_token %}
+              <button type="submit" class="button" style="min-height:34px;padding:6px 14px;font-size:13px">Sign out</button>
+            </form>
           {% else %}
-            <span class="badge">Welcome</span>
+            <a href="{% url 'accounts:login' %}" class="button" style="min-height:34px;padding:6px 14px;font-size:13px">Sign in</a>
+            <a href="{% url 'accounts:signup' %}" class="button button--primary" style="min-height:34px;padding:6px 14px;font-size:13px;margin-left:6px">Sign up</a>
           {% endif %}
         </div>
       </header>
