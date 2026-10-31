@@ -92,4 +92,63 @@
       </dl>
     </div>
   </div>
+
+  <!-- Recorded Payments -->
+  <div class="panel" style="margin-bottom:24px">
+    <h2>Payment History</h2>
+    {% if payments %}
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Payments Table">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Method</th>
+              <th scope="col" class="amount">Amount</th>
+              <th scope="col">Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in payments %}
+              <tr>
+                <td>{{ p.paid_at|date:"d M Y, H:i" }}</td>
+                <td><span class="badge">{{ p.get_method_display }}</span></td>
+                <td class="amount"><strong>₹{{ p.amount }}</strong></td>
+                <td><code>{{ p.transaction_ref|default:"—" }}</code></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No payments recorded on this statement.</p>
+    {% endif %}
+  </div>
+
+  <!-- Self-Service Payment Simulation / Checkout -->
+  {% if invoice.status == 'CONFIRMED' and invoice.amount_due > 0 %}
+    <div class="panel" id="pay" style="max-width:480px">
+      <h3>Pay Statement</h3>
+      <p class="muted" style="font-size:13px">Simulate immediate card, UPI, or netbanking settlement for this invoice.</p>
+      <form method="post" action="{% url 'payments:customer_payment_create' invoice_pk=invoice.pk %}" style="display:grid;gap:12px;margin-top:16px">
+        {% csrf_token %}
+        <div>
+          <label for="method" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Payment Method</label>
+          <select name="method" id="method" required style="width:100%;padding:8px;border-radius:4px;border:1px solid var(--line)">
+            <option value="UPI">UPI (Instant)</option>
+            <option value="CARD">Credit / Debit Card</option>
+            <option value="BANK_TRANSFER">Netbanking</option>
+            <option value="SIMULATED" selected>Simulated Demo Payment</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="amount" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Payment Amount (₹)</label>
+          <input type="number" step="0.01" min="0.01" max="{{ invoice.amount_due }}" name="amount" id="amount" value="{{ invoice.amount_due }}" required style="width:100%;padding:8px;border-radius:4px;border:1px solid var(--line)">
+          <small class="muted">You can pay in full (₹{{ invoice.amount_due }}) or make a partial payment.</small>
+        </div>
+
+        <button type="submit" class="button button--primary" style="margin-top:8px">Confirm & Pay ₹{{ invoice.amount_due }}</button>
+      </form>
+    </div>
+  {% endif %}
 {% endblock %}

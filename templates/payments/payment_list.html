@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Payments · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow">Financial Settlement</p>
+      <h1>Recorded Payments</h1>
+      <p class="muted">Review settled transactions, payment methods, external references, and idempotency tracking.</p>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 16px;text-align:right">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Total Collected</span>
+      <div class="amount" style="font-size:20px;font-weight:750;color:var(--accent)">₹{{ total_collected }}</div>
+    </div>
+  </div>
+
+  <!-- Filters & Search -->
+  <div class="panel" style="margin-bottom:24px;padding:16px">
+    <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <label for="method" style="font-size:13px;font-weight:600">Method:</label>
+      <select name="method" id="method" style="padding:6px 12px;border-radius:4px;border:1px solid var(--line);font-size:13px">
+        <option value="" {% if not method_filter %}selected{% endif %}>All Methods</option>
+        {% for val, label in method_choices %}
+          <option value="{{ val }}" {% if method_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Search invoice #, customer email, or ref..." style="padding:6px 12px;border-radius:4px;border:1px solid var(--line);font-size:13px;flex:1;min-width:220px">
+
+      <button type="submit" class="button" style="min-height:34px;padding:4px 12px;font-size:13px">Filter</button>
+      {% if method_filter or search_query %}
+        <a href="{% url 'payments:payment_list' %}" class="button" style="min-height:34px;padding:4px 12px;font-size:13px">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  {% if payments %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Payments Table">
+      <table class="data-table">
+        <caption class="sr-only">Recorded Payments Directory</caption>
+        <thead>
+          <tr>
+            <th scope="col">Date / Time</th>
+            <th scope="col">Invoice #</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Method</th>
+            <th scope="col" class="amount">Amount</th>
+            <th scope="col">Reference</th>
+            <th scope="col">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+            <tr>
+              <td style="font-size:13px">{{ p.paid_at|date:"d M Y, H:i" }}</td>
+              <td><strong><a href="{% url 'billing:invoice_detail' pk=p.invoice.pk %}">{{ p.invoice.number }}</a></strong></td>
+              <td>{{ p.customer.email }}</td>
+              <td><span class="badge">{{ p.get_method_display }}</span></td>
+              <td class="amount"><strong>₹{{ p.amount }}</strong></td>
+              <td>
+                {% if p.transaction_ref %}
+                  <code>{{ p.transaction_ref }}</code>
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if p.notes %}
+                  <span class="muted" style="font-size:13px">{{ p.notes }}</span>
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No payments recorded yet" empty_description="Payments recorded against invoices or simulated by customers will appear here." %}
+  {% endif %}
+{% endblock %}

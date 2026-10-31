@@ -1,10 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}My Invoices · Brightloop{% endblock %}
 {% block content %}
-  <div class="page-heading">
-    <p class="eyebrow">Customer Portal</p>
-    <h1>My Invoices</h1>
-    <p class="muted">Review billing statements, due dates, and settlement status for your account.</p>
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow">Customer Portal</p>
+      <h1>My Invoices</h1>
+      <p class="muted">Review billing statements, due dates, and settlement status for your account.</p>
+    </div>
+  </div>
+
+  <!-- Account Balance Summary -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:24px">
+    <div class="panel" style="padding:16px">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Total Invoiced</span>
+      <div class="amount" style="font-size:20px;font-weight:750;margin-top:4px">₹{{ total_invoiced }}</div>
+    </div>
+    <div class="panel" style="padding:16px">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Total Settled</span>
+      <div class="amount" style="font-size:20px;font-weight:750;color:var(--accent);margin-top:4px">₹{{ total_paid }}</div>
+    </div>
+    <div class="panel" style="padding:16px">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Outstanding Balance</span>
+      <div class="amount" style="font-size:20px;font-weight:750;{% if total_outstanding > 0 %}color:var(--error){% else %}color:var(--accent){% endif %};margin-top:4px">₹{{ total_outstanding }}</div>
+    </div>
   </div>
 
   {% if invoices %}
@@ -63,6 +81,9 @@
               </td>
               <td>
                 <a href="{% url 'billing:customer_invoice_detail' pk=inv.pk %}" class="button" style="min-height:28px;padding:2px 8px;font-size:12px">View</a>
+                {% if inv.status == 'CONFIRMED' and inv.amount_due > 0 %}
+                  <a href="{% url 'billing:customer_invoice_detail' pk=inv.pk %}#pay" class="button button--primary" style="min-height:28px;padding:2px 8px;font-size:12px">Pay Now</a>
+                {% endif %}
                 <a href="{% url 'billing:invoice_print' pk=inv.pk %}" target="_blank" class="button" style="min-height:28px;padding:2px 8px;font-size:12px">Print</a>
               </td>
             </tr>

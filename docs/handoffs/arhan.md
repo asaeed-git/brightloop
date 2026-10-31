@@ -1,44 +1,58 @@
 # Syed Arhan: incoming work
 
-## Current checkpoint: B3 Recurring Billing Engine & B4 Invoices
+## Current checkpoint: B5 Payments & Balances
 
-October 31, 2026. Branch `arhan/recurring-billing-invoices`, based on `main` (c86c243, after Abbas's A5).
+October 31, 2026. Branch `arhan/payments-balances`, based on `main` (commit `e58d07d`, after Abbas's A6).
 
-Implemented B3 (Recurring Billing Engine) and B4 (Invoices):
-- `billing/models.py`:
-  - `Invoice`: unique `number` (`INV-YYYYMM-XXXX`), link to `customer` and optional `subscription`, status (`DRAFT`, `CONFIRMED`, `PAID`, `CANCELLED`), `period_start`, `period_end`, `issue_date`, `due_date`, financial snapshots (`subtotal`, `discount_total`, `net_total`, `tax_total`, `total`, `amount_paid`), `amount_due`, `is_overdue`.
-  - **Database Anti-Duplication Constraint**: Unique constraint on `(subscription, period_start)` strictly prevents double-billing for the same period.
-  - `InvoiceLine`: immutable snapshots storing `product`, `variant`, `description`, `quantity`, frozen `unit_price`, `gross`, allocated `discount`, `net`, `tax`, `total`, and `discount_rule`.
-  - `BillingRunRecord`: audit log of recurring billing runs with target date, executed by, subscriptions checked, invoices created, total billed amount, success status, and log messages.
-- `billing/services.py`:
-  - `generate_invoice_for_subscription(subscription, target_date)`: authoritative, transactional invoice creation calling B2 `calculate_price()`, enforcing anti-duplication, and freezing snapshot line items.
-  - `advance_subscription_period(subscription, target_date)`: advances period start, end, and next billing date, handling contract expiry auto-closure per approved financial policy.
-  - `run_recurring_billing(target_date, executed_by)`: queries active, unpaused subscriptions with `next_billing_date <= target_date`, bills each in an isolated atomic transaction, advances schedule, and records execution metrics.
-- `billing/views.py` & `billing/urls.py`:
-  - Staff invoice list with status filtering and text search.
-  - Staff invoice detail with frozen lines breakdown, status badges, and confirm/cancel actions.
-  - Printable invoice layout (`invoice_print`) for customer download or physical printing.
-  - Customer portal: "My Invoices" list and detail scoped strictly to `request.user` via `scope_to_customer`.
-  - Staff recurring billing engine execution view with manual trigger form and historical audit table.
-- `templates/billing/`:
-  - `invoice_list.html`, `invoice_detail.html`, `invoice_print.html`, `customer_invoice_list.html`, `customer_invoice_detail.html`, `billing_run_list.html`.
+Implemented Milestone B5 (Payments & Balances):
+- `payments/models.py`:
+  - `Payment`: UUID primary key, positive exact INR Decimal `amount` (`MinValueValidator(Decimal("0.01"))`), unique `idempotency_key` (max 128 chars), method choices (`CARD`, `UPI`, `BANK_TRANSFER`, `CASH`, `SIMULATED`), `paid_at` timestamp, `transaction_ref`, `notes`, FK to `billing.Invoice` (`on_delete=PROTECT`), and FK to `settings.AUTH_USER_MODEL` (`on_delete=PROTECT`).
+  - Database check constraint `payments_payment_amount_positive` (`amount > 0.00`).
+  - Indexes on `invoice` and `(customer, -paid_at)`.
+- `payments/services.py`:
+  - `record_payment(...)`:
+    - Wraps payment recording in an atomic transaction (`transaction.atomic()`).
+    - Row-level lock on `Invoice.objects.select_for_update()`.
+    - **Idempotency & replay protection**: Replaying same `idempotency_key` with identical payload returns existing `Payment` without duplicate debit; mismatched payload with same key raises `PaymentConflictError`.
+    - **Overpayment protection**: Rejects payments exceeding `invoice.amount_due` at the service level (`OverpaymentError`) and respects the database check constraint `billing_invoice_amount_paid_lte_total`.
+    - **Partial settlement**: Updates `invoice.amount_paid`, keeps status `CONFIRMED`.
+    - **Full settlement**: When `invoice.amount_paid >= invoice.total`, transitions `status` to `PAID` and sets `paid_at`.
+- `payments/forms.py`:
+  - `PaymentForm` for staff payment recording with method, amount, reference, notes, and optional UUID idempotency key.
+- `payments/views.py` & `payments/urls.py`:
+  - `payment_list`: Filterable staff directory of all recorded payments by method or search query (`invoice__number`, `customer__email`, `transaction_ref`), with total collected aggregation.
+  - `payment_create`: Staff action to record partial or full settlement against any invoice with row locking and error handling.
+  - `customer_payment_create`: Customer self-service payment recording/simulation, strictly scoped via `scope_to_customer` (cannot pay other customers' invoices; raises 404).
+- `billing/views.py` & templates:
+  - Added `OVERDUE` filter to staff invoice list (`billing/invoice_list.html`).
+  - Added customer account balance summary (total invoiced, total settled, outstanding balance) in `billing/customer_invoice_list.html`.
+  - Embedded payment history and "Record Payment" form in `billing/invoice_detail.html` (staff).
+  - Embedded payment history and "Pay Statement / Simulate Payment" in `billing/customer_invoice_detail.html` (customer).
 - `templates/base.html`:
-  - Role-aware sidebar links: Staff/Admin see `Invoices` and `Billing Runs`; Customers see `My Invoices`.
-- `billing/tests.py`:
-  - 36 tests in `billing` covering models, database constraints, anti-duplication uniqueness, pricing accuracy, recurring billing runner, schedule advance, expiry auto-closure, invoice views, and customer ownership scoping.
-- Total test suite: **158 tests passing in ~6.2s against local PostgreSQL**.
+  - Added role-aware `Payments` navigation link for Admin/Staff.
+- `payments/tests.py`:
+  - 16 tests covering partial settlement, full settlement, cumulative payments, overpayment rejection, unpayable invoice validation, idempotent replay, payload conflict rejection, DB positive amount constraint, concurrent payment race prevention with `select_for_update` (`PaymentConcurrencyTests`), staff view access, customer 403 on staff list, customer self-service simulation, customer cross-account payment isolation (HTTP 404), overdue filtering, and customer balance aggregation.
+- Total test suite: **184 tests passing in ~8.1s against local PostgreSQL (127.0.0.1:55432)** with 0 failures and 0 errors.
 
 Verification actually run:
-- Applied `billing.0002_billingrunrecord_invoice_invoiceline_and_more` migration to local PostgreSQL.
-- Full test suite: 158 tests passed with 0 failures, 0 errors.
-- Ruff linter: 0 errors across 93 files checked.
-- Ruff formatter: all 93 files formatted.
+- Applied `payments.0001_initial` migration to local PostgreSQL.
+- Ran full test suite: 184 tests passed (184 OK, 0 failures).
+- Ruff check: All checks passed across entire codebase (104 files).
+- Ruff format check: 104 files formatted cleanly.
 - Django system check: 0 issues.
+- Migrations check: No uncreated migrations (`manage.py makemigrations --check --dry-run`).
 - Static assets collected cleanly.
 
 Next:
-- Commit and push `arhan/recurring-billing-invoices`.
-- Proceed to B5 (Payments & Balances): payment recording, payment method/note, idempotency key, partial vs. full settlement, balance tracking, and overpayment prevention.
+- Commit and push `arhan/payments-balances`.
+- Milestone B6: Reports & scale testing (Developer 2).
+
+## Previous checkpoint: B3 Recurring Billing Engine & B4 Invoices (merged to main)
+
+Implemented B3 (Recurring Billing Engine) and B4 (Invoices):
+- `billing/models.py`: `Invoice`, `InvoiceLine`, `BillingRunRecord` models with anti-duplication unique constraint on `(subscription, period_start)`.
+- `billing/services.py`: `generate_invoice_for_subscription`, `advance_subscription_period`, `run_recurring_billing`.
+- Views, templates, and 36 billing tests.
 
 ## Previous checkpoint: B2 Tax and Discount Configuration (merged to main)
 

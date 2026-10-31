@@ -153,4 +153,87 @@
       </dl>
     </div>
   </div>
+
+  <!-- Recorded Payments History -->
+  <div class="panel" style="margin-bottom:24px">
+    <h2>Recorded Payments</h2>
+    {% if payments %}
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Payments Table">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Date / Time</th>
+              <th scope="col">Method</th>
+              <th scope="col" class="amount">Amount</th>
+              <th scope="col">Reference</th>
+              <th scope="col">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in payments %}
+              <tr>
+                <td style="font-size:13px">{{ p.paid_at|date:"d M Y, H:i" }}</td>
+                <td><span class="badge">{{ p.get_method_display }}</span></td>
+                <td class="amount"><strong>₹{{ p.amount }}</strong></td>
+                <td>
+                  {% if p.transaction_ref %}
+                    <code>{{ p.transaction_ref }}</code>
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if p.notes %}
+                    <span class="muted" style="font-size:13px">{{ p.notes }}</span>
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No payments recorded against this invoice yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Staff Payment Recording Form -->
+  {% if is_staff and invoice.status == 'CONFIRMED' and invoice.amount_due > 0 %}
+    <div class="panel" id="record-payment" style="max-width:540px">
+      <h3>Record Payment</h3>
+      <p class="muted" style="font-size:13px">Record a full or partial settlement received from the customer.</p>
+      <form method="post" action="{% url 'payments:payment_create' invoice_pk=invoice.pk %}" style="display:grid;gap:12px;margin-top:16px">
+        {% csrf_token %}
+        <div>
+          <label for="method" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Payment Method</label>
+          <select name="method" id="method" required style="width:100%;padding:8px;border-radius:4px;border:1px solid var(--line)">
+            <option value="BANK_TRANSFER">Bank Transfer</option>
+            <option value="UPI">UPI</option>
+            <option value="CARD">Credit / Debit Card</option>
+            <option value="CASH">Cash</option>
+            <option value="SIMULATED">Simulated (Demo)</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="amount" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Amount (₹) — Max: ₹{{ invoice.amount_due }}</label>
+          <input type="number" step="0.01" min="0.01" max="{{ invoice.amount_due }}" name="amount" id="amount" value="{{ invoice.amount_due }}" required style="width:100%;padding:8px;border-radius:4px;border:1px solid var(--line)">
+        </div>
+
+        <div>
+          <label for="transaction_ref" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Transaction Reference (Optional)</label>
+          <input type="text" name="transaction_ref" id="transaction_ref" placeholder="Bank UTR or check number" style="width:100%;padding:8px;border-radius:4px;border:1px solid var(--line)">
+        </div>
+
+        <div>
+          <label for="notes" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Notes (Optional)</label>
+          <textarea name="notes" id="notes" rows="2" placeholder="Internal memo" style="width:100%;padding:8px;border-radius:4px;border:1px solid var(--line)"></textarea>
+        </div>
+
+        <button type="submit" class="button button--primary" style="margin-top:8px">Record Settlement</button>
+      </form>
+    </div>
+  {% endif %}
 {% endblock %}

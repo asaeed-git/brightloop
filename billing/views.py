@@ -1,8 +1,10 @@
 import datetime
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
@@ -131,8 +133,14 @@ def invoice_list(request):
 
     status_filter = request.GET.get("status", "").upper()
     queryset = Invoice.objects.select_related("customer", "subscription").all()
+    today = timezone.localdate()
 
-    if status_filter in Invoice.Status.values:
+    if status_filter == "OVERDUE":
+        queryset = queryset.filter(
+            status=Invoice.Status.CONFIRMED,
+            due_date__lt=today,
+        )
+    elif status_filter in Invoice.Status.values:
         queryset = queryset.filter(status=status_filter)
 
     search = request.GET.get("q", "").strip()
@@ -141,6 +149,8 @@ def invoice_list(request):
             customer__email__icontains=search
         )
 
+    status_choices = list(Invoice.Status.choices) + [("OVERDUE", "Overdue")]
+
     return render(
         request,
         "billing/invoice_list.html",
@@ -148,7 +158,7 @@ def invoice_list(request):
             "invoices": queryset,
             "status_filter": status_filter,
             "search_query": search,
-            "status_choices": Invoice.Status.choices,
+            "status_choices": status_choices,
         },
     )
 
@@ -158,7 +168,7 @@ def invoice_detail(request, pk):
     """Staff / Admin or authorized customer detail view of an invoice."""
     invoice = get_object_or_404(
         Invoice.objects.select_related("customer", "subscription__plan").prefetch_related(
-            "lines__product", "lines__variant", "lines__discount_rule"
+            "lines__product", "lines__variant", "lines__discount_rule", "payments"
         ),
         pk=pk,
     )
@@ -175,6 +185,7 @@ def invoice_detail(request, pk):
         {
             "invoice": invoice,
             "lines": invoice.lines.all(),
+            "payments": invoice.payments.all(),
             "is_staff": is_staff,
         },
     )
@@ -247,16 +258,26 @@ def invoice_print(request, pk):
 
 @login_required
 def customer_invoice_list(request):
-    """Customer view of their own invoices."""
+    """Customer view of their own invoices with balance summary."""
     queryset = scope_to_customer(
         Invoice.objects.select_related("subscription__plan").order_by("-issue_date"),
         request.user,
         "customer",
     )
+
+    total_invoiced = queryset.aggregate(total=Sum("total"))["total"] or Decimal("0.00")
+    total_paid = queryset.aggregate(total=Sum("amount_paid"))["total"] or Decimal("0.00")
+    total_outstanding = max(Decimal("0.00"), total_invoiced - total_paid)
+
     return render(
         request,
         "billing/customer_invoice_list.html",
-        {"invoices": queryset},
+        {
+            "invoices": queryset,
+            "total_invoiced": total_invoiced,
+            "total_paid": total_paid,
+            "total_outstanding": total_outstanding,
+        },
     )
 
 
@@ -266,7 +287,7 @@ def customer_invoice_detail(request, pk):
     invoice = get_object_or_404(
         scope_to_customer(
             Invoice.objects.select_related("subscription__plan").prefetch_related(
-                "lines__product", "lines__variant"
+                "lines__product", "lines__variant", "payments"
             ),
             request.user,
             "customer",
@@ -279,6 +300,7 @@ def customer_invoice_detail(request, pk):
         {
             "invoice": invoice,
             "lines": invoice.lines.all(),
+            "payments": invoice.payments.all(),
         },
     )
 

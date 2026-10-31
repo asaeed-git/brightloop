@@ -3,8 +3,8 @@
 ## 1. Project snapshot
 
 Brightloop is a subscription-management web app for the hackathon problem statement.
-Milestones A1–A6 (Abbas) and B1–B4 (Syed) are merged on `main`.
-168 automated tests pass against local PostgreSQL in ~2.7s.
+Milestones A1–A6 (Abbas) and B1–B5 (Syed) are implemented and verified.
+184 automated tests pass against local PostgreSQL in ~8.1s.
 
 Current stack: Python 3.14.4, Django 5.2.18, PostgreSQL 17.11, server-rendered HTML. Exact dependencies are pinned in requirements.txt.
 
@@ -16,7 +16,7 @@ See WORK_DIVISION.md for full responsibilities and cross-module change rules.
 
 ## 3. Repository map
 
-Active checkout: C:\Users\abbas\Desktop\brightloop.
+Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
 
 - config/: settings, URL routing, WSGI/ASGI, test settings.
 - accounts/: custom user, database constraints, password validator, role/query guards, admin forms, public signup/login/logout/reset, profile view and editing, throttling, tests.
@@ -25,15 +25,17 @@ Active checkout: C:\Users\abbas\Desktop\brightloop.
 - subscriptions/: subscription lifecycle (DRAFT → QUOTATION → CONFIRMED → ACTIVE → CLOSED), lines, pause/resume, early close, renewal, quotation conversion, seat quantity update with min seat enforcement, customer self-service actions, linked invoice display, pricing calculation integration.
 - pricing/: exact pure calculation service and 18 tests; immutable Charge/Discount/LineTotal/PriceTotal values.
 - billing/: TaxRate, DiscountRule, Invoice, InvoiceLine, and BillingRunRecord models, anti-duplication unique constraints, recurring billing runner, admin and staff views, customer "My Invoices" portal, tests.
+- payments/: Payment model, positive amount constraint, idempotency key tracking, select_for_update row-locking settlement service, partial/full payment, overpayment protection, staff payment management, customer self-service simulation, tests.
 - core/: home, database readiness, test_ui.
 - templates/:
-  - base.html: responsive shell, role-aware navigation (Plans, Products, Subscriptions, Invoices, Billing Runs, Customers, Tax Rates, Discounts, My Invoices, Account, Admin).
+  - base.html: responsive shell, role-aware navigation (Plans, Products, Subscriptions, Invoices, Payments, Billing Runs, Customers, Tax Rates, Discounts, My Invoices, Account, Admin).
   - core/home.html: workspace landing page with role-specific dashboards.
   - accounts/: signup, login, password reset flow templates, profile.html.
   - catalog/: product list, product detail, product form, variant form, customer list, customer detail.
   - plans/: plan list, plan detail, plan form, template list, template detail, template form.
   - subscriptions/: subscription list, subscription detail with customer action buttons, subscription form, subscription from template.
-  - billing/: tax rate list & form, discount rule list & form, invoice list, invoice detail, invoice print layout, customer invoice list, customer invoice detail, billing run list.
+  - billing/: tax rate list & form, discount rule list & form, invoice list with overdue filter, invoice detail with payment history & recording form, invoice print layout, customer invoice list with balance summary, customer invoice detail with payment simulation, billing run list.
+  - payments/: payment_list.html with filterable method and search.
   - components/: form_fields.html, empty_state.html.
 - core/static/brightloop/app.css: shared UI design system.
 - scripts/local_postgres.py: isolated local database helper.
@@ -54,21 +56,22 @@ Active checkout: C:\Users\abbas\Desktop\brightloop.
 - B3: Recurring Billing Engine — due-period selection (`next_billing_date <= today`), atomic transactional processing, schedule advance, expiry auto-closure, and audit logging.
 - B4: Invoices — immutable snapshot models, anti-duplication database constraint `(subscription, period_start)`, staff management, print view, and customer "My Invoices" portal.
 - A6: Customer Subscription Experience — `/accounts/profile/` profile management, self-serve quote confirmation, pause/resume, early cancellation enforcement, seat quantity updates enforcing plan minimums, linked invoices in subscription detail.
-- 168 tests pass in ~2.7s against local PostgreSQL.
-- Ruff check and format pass across 93 files, Django system check passes with 0 issues.
+- B5: Payments & Balances — `Payment` model with idempotency key, row-level locking (`select_for_update`), partial vs. full settlement, overpayment rejection, staff payment management, customer simulation, balance summary tracking.
+- 184 tests pass in ~8.1s against local PostgreSQL.
+- Ruff check and format pass across 104 files, Django system check passes with 0 issues.
 
-**In progress / Next:** B5 Payments & Balances (Developer 2).
-
-**Unstarted:** B6 Reports & scale testing (Developer 2).
+**In progress / Next:** B6 Reports & scale testing (Developer 2).
 
 ## 5. Technical contracts and decisions
 
+- Payment Settlement: Transactional with `Invoice.objects.select_for_update()`.
+- Idempotency: Same key + matching payload returns existing payment; same key + mismatch raises `PaymentConflictError`.
+- Balance Tracking: `amount_paid` tracked on `Invoice`; payments transition to `PAID` when fully settled.
 - Anti-duplication: Database unique constraint on `Invoice(subscription, period_start)` guarantees zero duplicate billing.
 - Immutable snapshots: `InvoiceLine` stores frozen unit price, gross, discount, net, tax, and total.
 - Recurring worker advances `current_period_start`, `current_period_end`, and `next_billing_date` atomically upon successful invoice creation.
 - Subscriptions with `expiry_date` reached auto-close if `auto_close_on_expiry=True`, or stop future scheduling.
 - Customer self-serve actions strictly scoped to `request.user` via `scope_to_customer` and object ownership checks.
-- Minimum seat constraints enforced server-side before updating subscription line quantities.
 
 ## 6. Run and verification instructions
 
@@ -82,5 +85,5 @@ Active checkout: C:\Users\abbas\Desktop\brightloop.
 
 ## 7. Handoff checkpoint
 
-October 31, 2026. Branch: `main`.
-168 tests passing against PostgreSQL 17.11. All checks clean.
+October 31, 2026. Branch: `arhan/payments-balances`.
+184 tests passing against PostgreSQL 17.11. All checks clean.

@@ -49,6 +49,7 @@ class SharedUITests(SimpleTestCase):
                     expected_internal = active and role in [User.Role.ADMIN, User.Role.STAFF]
                     expected_customer = active and role == User.Role.CUSTOMER
                     self.assertEqual('href="/billing/invoices/"' in html, expected_internal)
+                    self.assertEqual('href="/payments/"' in html, expected_internal)
                     self.assertEqual('href="/billing/runs/"' in html, expected_internal)
                     self.assertEqual('href="/billing/taxes/"' in html, expected_internal)
                     self.assertEqual('href="/billing/discounts/"' in html, expected_internal)

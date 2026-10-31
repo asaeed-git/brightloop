@@ -13,5 +13,6 @@ urlpatterns = [
     path("plans/", include("plans.urls")),
     path("billing/", include("billing.urls")),
     path("subscriptions/", include("subscriptions.urls")),
+    path("payments/", include("payments.urls")),
     path("admin/", admin.site.urls),
 ]
