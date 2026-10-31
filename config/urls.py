@@ -11,5 +11,6 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("catalog/", include("catalog.urls")),
     path("plans/", include("plans.urls")),
+    path("billing/", include("billing.urls")),
     path("admin/", admin.site.urls),
 ]

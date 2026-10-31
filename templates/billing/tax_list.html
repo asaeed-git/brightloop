@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Tax Rates · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow">Billing Configuration</p>
+      <h1>Tax Rates</h1>
+      <p class="muted">Manage tax rates applied per charge line during invoicing.</p>
+    </div>
+    <a href="{% url 'billing:tax_create' %}" class="button button--primary">+ New Tax Rate</a>
+  </div>
+
+  {% if rates %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Tax Rates Table">
+      <table class="data-table">
+        <caption class="sr-only">Tax rate configuration</caption>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col" class="amount">Rate (%)</th>
+            <th scope="col">Status</th>
+            <th scope="col">Last Updated</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rate in rates %}
+            <tr>
+              <td><strong>{{ rate.name }}</strong></td>
+              <td class="amount">{{ rate.rate }}%</td>
+              <td>
+                {% if rate.is_active %}
+                  <span class="badge badge--success">Active</span>
+                {% else %}
+                  <span class="badge badge--warning">Inactive</span>
+                {% endif %}
+              </td>
+              <td><span class="muted" style="font-size:13px">{{ rate.updated_at|date:"d M Y" }}</span></td>
+              <td>
+                <a href="{% url 'billing:tax_edit' pk=rate.pk %}" class="button" style="min-height:30px;padding:4px 10px;font-size:12px">Edit</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No tax rates configured" empty_description="Create a tax rate to apply to plan and product charges during invoicing." %}
+  {% endif %}
+{% endblock %}

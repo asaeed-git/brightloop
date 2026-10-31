@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Discount Rules · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow">Billing Configuration</p>
+      <h1>Discount Rules</h1>
+      <p class="muted">Manage fixed and percentage discount rules available during invoicing.</p>
+    </div>
+    <a href="{% url 'billing:discount_create' %}" class="button button--primary">+ New Discount Rule</a>
+  </div>
+
+  {% if rules %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Discount Rules Table">
+      <table class="data-table">
+        <caption class="sr-only">Discount rule configuration</caption>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Kind</th>
+            <th scope="col" class="amount">Value</th>
+            <th scope="col">Scope</th>
+            <th scope="col">Product</th>
+            <th scope="col">Validity</th>
+            <th scope="col">Max Uses</th>
+            <th scope="col">Status</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rule in rules %}
+            <tr>
+              <td><strong>{{ rule.name }}</strong></td>
+              <td>
+                {% if rule.kind == 'FIXED' %}
+                  <span class="badge">Fixed ₹</span>
+                {% else %}
+                  <span class="badge badge--accent">Percentage %</span>
+                {% endif %}
+              </td>
+              <td class="amount">
+                {% if rule.kind == 'FIXED' %}₹{{ rule.value }}{% else %}{{ rule.value }}%{% endif %}
+              </td>
+              <td>
+                {% if rule.scope == 'PRODUCT' %}
+                  <span class="badge">Product</span>
+                {% else %}
+                  <span class="badge">Subscription</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if rule.product %}
+                  <span style="font-size:13px">{{ rule.product.name }}</span>
+                {% else %}
+                  <span class="muted" style="font-size:13px">—</span>
+                {% endif %}
+              </td>
+              <td style="font-size:13px">
+                {% if rule.valid_from or rule.valid_until %}
+                  {{ rule.valid_from|date:"d M Y"|default:"∞" }} – {{ rule.valid_until|date:"d M Y"|default:"∞" }}
+                {% else %}
+                  <span class="muted">No limit</span>
+                {% endif %}
+              </td>
+              <td class="amount" style="font-size:13px">
+                {% if rule.max_uses %}{{ rule.max_uses }}{% else %}<span class="muted">∞</span>{% endif %}
+              </td>
+              <td>
+                {% if rule.is_active %}
+                  <span class="badge badge--success">Active</span>
+                {% else %}
+                  <span class="badge badge--warning">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'billing:discount_edit' pk=rule.pk %}" class="button" style="min-height:30px;padding:4px 10px;font-size:12px">Edit</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No discount rules configured" empty_description="Create discount rules to offer fixed or percentage reductions on subscriptions and products." %}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <p class="eyebrow"><a href="{% url 'billing:discount_list' %}">← Discount Rules</a></p>
+    <h1>{{ title }}</h1>
+  </div>
+
+  <div class="panel" style="max-width:640px">
+    <p class="muted" style="margin-bottom:16px;font-size:14px">
+      <strong>SUBSCRIPTION</strong> scope covers the plan base fee and all product lines.
+      <strong>PRODUCT</strong> scope covers only matching product lines — select the product below.
+      Percentage rules round half-up per line; fixed rules are allocated proportionally across eligible charges.
+    </p>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'components/form_fields.html' with form=form %}
+      <div style="display:flex;gap:12px;margin-top:16px">
+        <button type="submit" class="button button--primary">Save Discount Rule</button>
+        {% if rule %}
+          <a href="{% url 'billing:discount_list' %}" class="button">Cancel</a>
+        {% else %}
+          <a href="{% url 'billing:discount_list' %}" class="button">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+{% endblock %}
