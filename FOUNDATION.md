@@ -46,8 +46,8 @@ used for development and tests as well as planned hosting so concurrency tests a
 | templates/base.html, core/static/ | Syed | Implemented shared UI shell & design system |
 | catalog/, plans/, subscriptions/ | Abbas | Catalog, Plans, and Subscriptions lifecycle implemented |
 | pricing/ | Syed | Pure calculator implemented and integrated into template & subscription previews |
-| billing/ | Syed | TaxRate & DiscountRule configuration models, forms, and admin/staff views implemented; recurring billing pending |
-| payments/, reporting/ | Syed | Planned modules |
+| billing/ | Syed | TaxRate, DiscountRule, Invoice models, immutable lines, and recurring billing engine implemented; 158 tests passing |
+| payments/, reporting/ | Syed | Planned modules (B5, B6) |
 | docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.5, shared-ui, financial proposal, pricing v0.1 |
 
 Keep views thin, validation in forms or explicit input validators, business operations in
@@ -80,9 +80,9 @@ other developer's duty to enforce permissions, write relevant tests, and explain
 Financial proposal v0.1 was approved as written according to the user's report above.
 Its exact allocation and final-period rules supersede the previously open entries below.
 These are application policies, not organizer mandates. Approval is not implementation;
-the pure calculator is added in pricing/services.py, and tax/discount configuration tables
-and management views are added in billing/. Subscriptions lifecycle and quotation generation
-are implemented in subscriptions/.
+the pure calculator is added in pricing/services.py, tax/discount configuration tables
+and management views are added in billing/, and Invoice snapshots and recurring billing engine
+are implemented in billing/.
 
 | Topic | Candidate default |
 | --- | --- |
@@ -107,8 +107,7 @@ are implemented in subscriptions/.
 Fixed discount allocation uses largest remainder in cents, ties by stable charge ID;
 percentage discounts and tax use per-line half-up rounding. See financial-proposal.md
 for approved examples, pricing.md for the implemented calculator, and billing/ for configuration
-models and views. Eligibility/reservation, billing/invoices/payments remain unimplemented.
-Shared schemas, API consumers, and lifecycle locking still require coordinated implementation.
+models, invoices, and recurring billing runner.
 
 ## Operations and deployment direction
 
@@ -130,7 +129,3 @@ in the host's local filesystem. The local helper is for developers, never the de
 Read WORK_DIVISION.md sections 5–8 before shared changes. Record the proposal, affected callers,
 migration, checks, and both developers' actual agreement. Integrate producers and consumers together;
 increment this candidate version and identify its commit when one exists. Do not edit applied migrations.
-
-To pass M0: Syed reviews the stack/identity contracts, both settle the domain decisions, Syed supplies
-the shared UI, the starter runs on both machines, and a common baseline commit is recorded. Feature
-work that depends on unresolved contracts waits; independent setup/UI review can proceed now.

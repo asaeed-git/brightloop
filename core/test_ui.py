@@ -46,9 +46,13 @@ class SharedUITests(SimpleTestCase):
             for active in [True, False]:
                 with self.subTest(role=role, active=active):
                     html = self.render_home(User(role=role, is_active=active))
-                    expected = active and role in [User.Role.ADMIN, User.Role.STAFF]
-                    self.assertEqual('href="/billing/taxes/"' in html, expected)
-                    self.assertEqual('href="/billing/discounts/"' in html, expected)
+                    expected_internal = active and role in [User.Role.ADMIN, User.Role.STAFF]
+                    expected_customer = active and role == User.Role.CUSTOMER
+                    self.assertEqual('href="/billing/invoices/"' in html, expected_internal)
+                    self.assertEqual('href="/billing/runs/"' in html, expected_internal)
+                    self.assertEqual('href="/billing/taxes/"' in html, expected_internal)
+                    self.assertEqual('href="/billing/discounts/"' in html, expected_internal)
+                    self.assertEqual('href="/billing/my-invoices/"' in html, expected_customer)
 
     def test_variant_editor_keeps_products_navigation_active(self):
         from html.parser import HTMLParser
@@ -89,7 +93,6 @@ class SharedUITests(SimpleTestCase):
                 user = User(role=role, is_active=active, is_staff=staff)
                 html = self.render_home(user)
                 self.assertEqual('href="/admin/"' in html, expected)
-                self.assertNotIn('href="/invoices/"', html)
 
     def test_bound_form_keeps_input_and_accessible_errors(self):
         class SampleForm(forms.Form):

@@ -1,76 +1,53 @@
 # Syed Arhan: incoming work
 
-## Current checkpoint: B2 Tax and Discount Configuration
+## Current checkpoint: B3 Recurring Billing Engine & B4 Invoices
 
-October 31, 2026. Branch arhan/billing-config, based on arhan/pricing-calculator (3ec3956).
-Previous calculator increment was committed and pushed to origin/arhan/pricing-calculator.
+October 31, 2026. Branch `arhan/recurring-billing-invoices`, based on `main` (c86c243, after Abbas's A5).
 
-Implemented `billing` app for B2 tax and discount configuration:
+Implemented B3 (Recurring Billing Engine) and B4 (Invoices):
 - `billing/models.py`:
-  - `TaxRate`: name, rate (0.00–100.00), is_active flag, check constraints preventing negative or >100 rates.
-  - `DiscountRule`: name, kind (FIXED / PERCENTAGE), value, scope (SUBSCRIPTION / PRODUCT), product FK, min_eligible_gross, valid_from/valid_until, max_uses, is_active. Check constraints enforce positive value, scope-product exclusivity, valid date ordering, non-negative threshold.
-- `billing/forms.py`: `TaxRateForm` and `DiscountRuleForm` with cent-precision validation, percentage range guards, scope consistency checks, and date range coherence.
-- `billing/views.py`: Admin/Staff-only CRUD views for Tax Rates and Discount Rules (`tax_list`, `tax_create`, `tax_edit`, `discount_list`, `discount_create`, `discount_edit`), protected by `accounts.permissions.require_roles`.
-- `billing/urls.py`: nested routes mounted at `/billing/`.
-- `billing/admin.py`: standard Django admin integration with filters and search.
-- `billing/migrations/0001_initial.py`: generated and applied cleanly against local PostgreSQL.
-- `templates/billing/`: responsive, accessible views for tax and discount lists and forms using the shared UI design system and `components/form_fields.html`.
-- `templates/base.html`: added role-aware sidebar navigation links for Tax Rates and Discounts (visible to Staff/Admin).
-- `billing/tests.py`: 29 comprehensive unit tests covering models, check constraints, forms, views, and permission boundaries.
-- `core/test_ui.py`: added regression test verifying billing navigation visibility across all role/activity combinations.
+  - `Invoice`: unique `number` (`INV-YYYYMM-XXXX`), link to `customer` and optional `subscription`, status (`DRAFT`, `CONFIRMED`, `PAID`, `CANCELLED`), `period_start`, `period_end`, `issue_date`, `due_date`, financial snapshots (`subtotal`, `discount_total`, `net_total`, `tax_total`, `total`, `amount_paid`), `amount_due`, `is_overdue`.
+  - **Database Anti-Duplication Constraint**: Unique constraint on `(subscription, period_start)` strictly prevents double-billing for the same period.
+  - `InvoiceLine`: immutable snapshots storing `product`, `variant`, `description`, `quantity`, frozen `unit_price`, `gross`, allocated `discount`, `net`, `tax`, `total`, and `discount_rule`.
+  - `BillingRunRecord`: audit log of recurring billing runs with target date, executed by, subscriptions checked, invoices created, total billed amount, success status, and log messages.
+- `billing/services.py`:
+  - `generate_invoice_for_subscription(subscription, target_date)`: authoritative, transactional invoice creation calling B2 `calculate_price()`, enforcing anti-duplication, and freezing snapshot line items.
+  - `advance_subscription_period(subscription, target_date)`: advances period start, end, and next billing date, handling contract expiry auto-closure per approved financial policy.
+  - `run_recurring_billing(target_date, executed_by)`: queries active, unpaused subscriptions with `next_billing_date <= target_date`, bills each in an isolated atomic transaction, advances schedule, and records execution metrics.
+- `billing/views.py` & `billing/urls.py`:
+  - Staff invoice list with status filtering and text search.
+  - Staff invoice detail with frozen lines breakdown, status badges, and confirm/cancel actions.
+  - Printable invoice layout (`invoice_print`) for customer download or physical printing.
+  - Customer portal: "My Invoices" list and detail scoped strictly to `request.user` via `scope_to_customer`.
+  - Staff recurring billing engine execution view with manual trigger form and historical audit table.
+- `templates/billing/`:
+  - `invoice_list.html`, `invoice_detail.html`, `invoice_print.html`, `customer_invoice_list.html`, `customer_invoice_detail.html`, `billing_run_list.html`.
+- `templates/base.html`:
+  - Role-aware sidebar links: Staff/Admin see `Invoices` and `Billing Runs`; Customers see `My Invoices`.
+- `billing/tests.py`:
+  - 36 tests in `billing` covering models, database constraints, anti-duplication uniqueness, pricing accuracy, recurring billing runner, schedule advance, expiry auto-closure, invoice views, and customer ownership scoping.
+- Total test suite: **158 tests passing in ~6.2s against local PostgreSQL**.
 
 Verification actually run:
-- Applied `billing.0001_initial` migration to private local PostgreSQL cluster.
-- Full test suite: 111 tests passed in ~3.4s against local PostgreSQL.
-- Ruff lint (`ruff check .`) and formatting (`ruff format --check .`): all passed, 0 errors.
-- Pip dependency check (`pip check`): no broken requirements found.
-- Django system check (`manage.py check`): 0 issues identified.
-- Static collection (`manage.py collectstatic --noinput`): 128 assets unmodified.
-- Migration consistency (`makemigrations --check --dry-run`): no changes detected.
+- Applied `billing.0002_billingrunrecord_invoice_invoiceline_and_more` migration to local PostgreSQL.
+- Full test suite: 158 tests passed with 0 failures, 0 errors.
+- Ruff linter: 0 errors across 93 files checked.
+- Ruff formatter: all 93 files formatted.
+- Django system check: 0 issues.
+- Static assets collected cleanly.
 
 Next:
-- Commit and push `arhan/billing-config` branch.
-- Wait for Abbas's A4 (Plans & Quotations) to integrate the B2 calculation service with quotation previews and subscription billing lines.
-- Proceed to B3 recurring billing and B4 invoice generation.
+- Commit and push `arhan/recurring-billing-invoices`.
+- Proceed to B5 (Payments & Balances): payment recording, payment method/note, idempotency key, partial vs. full settlement, balance tracking, and overpayment prevention.
 
-## Previous checkpoint: B2 pure calculator and A2/A3 review (committed in 3ec3956)
+## Previous checkpoint: B2 Tax and Discount Configuration (merged to main)
 
-October 31, 2026. Branch arhan/pricing-calculator, based on origin/main a8df082.
-Abbas merged our prior UI in 8979d98, then added A2 auth and A3 catalog. The workspace
-was clean before creating this branch. No dependency changes or private files copied.
+Implemented `billing` app for B2 tax and discount configuration: `TaxRate` and `DiscountRule` models, check constraints, forms, views, templates, and 29 unit tests.
 
-The user explicitly answered that both developers approved financial-proposal.md as
-written, including discount allocation and final-period billing. Recorded that report
-in FOUNDATION.md and the proposal; no direct message from Abbas is fabricated.
+## Previous checkpoint: B2 pure calculator and A2/A3 review (merged to main)
 
-Implemented pricing/services.py: immutable Charge/Discount/LineTotal/PriceTotal values,
-exact integer-cent/Fraction calculations, per-line half-up percentage/tax rounding,
-stable proportional fixed-discount allocation, scope and validation guards. No database
-side effects, API routes, migrations or settings changes. Contract: docs/contracts/pricing.md.
-Caller services must still enforce dates/thresholds/usage, permissions and lifecycle rules.
-Quote/invoice consumers do not exist yet. This is the calculator increment of B2 only.
+Implemented `pricing/services.py`: exact integer-cent and Fraction calculation service with 18 tests.
 
-Shared UI: fixed Customers link role precedence, variant editor active navigation,
-anonymous signup/customer catalog landing actions, and narrow topbar account wrapping.
-Backend findings in docs/reviews/a2-a3-review.md remain assigned to Abbas: forwarded-header
-throttle bypass, duplicate variant submissions raising IntegrityError, negative effective
-prices. Isolated tests reproduced all three; this branch does not alter auth/catalog logic.
+## Previous B1 checkpoint (merged to main)
 
-Verification actually run:
-- Applied catalog.0001_initial to the private local PostgreSQL cluster.
-- Incoming suite: 60 tests passed, 1.534s.
-- Three temporary defect reproductions passed, 0.156s (confirm defects, not correctness).
-- Focused calculator/UI suite: 26 tests passed, 0.090s.
-- Final suite: 81 tests passed, 1.564s. Eighteen pricing tests include 300 allocation cases.
-- Ruff lint/format, pip check, Django system/migration checks and static collection passed.
-- Browser: public signup, sign-in and empty catalog routes open; signup/sign-in at 320px
-  have no horizontal page overflow. Full authenticated business workflows and scale timings
-  were not browser-tested. Automated incoming auth/catalog tests ran in the final suite.
-
-## Previous B1 checkpoint (historical)
-
-Cloned origin/main at 3b88994 into C:\Users\LENOVO\Desktop\brightloop\shared;
-working branch arhan/shared-ui. Prior planning files remain in the parent folder.
-Implemented independent B1 UI; financial rules and full M0 approval remain pending.
-User authorized continuing Developer 2 development from this repository, not approval
-of unspecified financial defaults. No financial implementation or schema was added.
+Shared responsive UI shell, CSS design system, and accessible form components.

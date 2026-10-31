@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Customer Invoices · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow">Billing & Receivables</p>
+      <h1>Customer Invoices</h1>
+      <p class="muted">Manage and review issued invoices, billing cycles, and settlement statuses.</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <a href="{% url 'billing:billing_run_list' %}" class="button button--primary">⚡ Recurring Billing Runs</a>
+    </div>
+  </div>
+
+  <!-- Filters & Search -->
+  <div class="panel" style="margin-bottom:24px;padding:16px">
+    <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <label for="status" style="font-size:13px;font-weight:600">Status:</label>
+      <select name="status" id="status" style="padding:6px 12px;border-radius:4px;border:1px solid var(--line);font-size:13px">
+        <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
+        {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Search invoice # or customer email..." style="padding:6px 12px;border-radius:4px;border:1px solid var(--line);font-size:13px;flex:1;min-width:200px">
+
+      <button type="submit" class="button" style="min-height:34px;padding:4px 12px;font-size:13px">Filter</button>
+      {% if status_filter or search_query %}
+        <a href="{% url 'billing:invoice_list' %}" class="button" style="min-height:34px;padding:4px 12px;font-size:13px">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  {% if invoices %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Invoices Table">
+      <table class="data-table">
+        <caption class="sr-only">Invoices Directory</caption>
+        <thead>
+          <tr>
+            <th scope="col">Invoice #</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Subscription</th>
+            <th scope="col">Period</th>
+            <th scope="col">Due Date</th>
+            <th scope="col" class="amount">Total</th>
+            <th scope="col" class="amount">Due</th>
+            <th scope="col">Status</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+            <tr>
+              <td><strong><a href="{% url 'billing:invoice_detail' pk=inv.pk %}">{{ inv.number }}</a></strong></td>
+              <td>{{ inv.customer.email }}</td>
+              <td>
+                {% if inv.subscription %}
+                  <a href="{% url 'subscriptions:subscription_detail' pk=inv.subscription.pk %}">{{ inv.subscription.number }}</a>
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if inv.period_start and inv.period_end %}
+                  <span style="font-size:12px">{{ inv.period_start|date:"d M" }} – {{ inv.period_end|date:"d M Y" }}</span>
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <span style="font-size:13px;{% if inv.is_overdue %}color:var(--error);font-weight:600{% endif %}">
+                  {{ inv.due_date|date:"d M Y" }}
+                  {% if inv.is_overdue %}<span class="badge badge--warning">Overdue</span>{% endif %}
+                </span>
+              </td>
+              <td class="amount">₹{{ inv.total }}</td>
+              <td class="amount">
+                {% if inv.amount_due > 0 %}
+                  <strong style="color:var(--error)">₹{{ inv.amount_due }}</strong>
+                {% else %}
+                  <span class="muted">₹0.00</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if inv.status == 'PAID' %}
+                  <span class="badge badge--success">Paid</span>
+                {% elif inv.status == 'CONFIRMED' %}
+                  <span class="badge badge--accent">Confirmed</span>
+                {% elif inv.status == 'DRAFT' %}
+                  <span class="badge">Draft</span>
+                {% elif inv.status == 'CANCELLED' %}
+                  <span class="badge badge--warning">Cancelled</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'billing:invoice_detail' pk=inv.pk %}" class="button" style="min-height:28px;padding:2px 8px;font-size:12px">View</a>
+                <a href="{% url 'billing:invoice_print' pk=inv.pk %}" class="button" target="_blank" style="min-height:28px;padding:2px 8px;font-size:12px">Print</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No invoices found" empty_description="No invoices match the selected filter. Run recurring billing to generate cycle statements." %}
+  {% endif %}
+{% endblock %}

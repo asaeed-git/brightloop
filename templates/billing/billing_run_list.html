@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Recurring Billing Runs · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow"><a href="{% url 'billing:invoice_list' %}">← Invoices</a></p>
+      <h1>Recurring Billing Engine</h1>
+      <p class="muted">Automated worker runs, due-period detection, schedule advance, and historical execution logs.</p>
+    </div>
+  </div>
+
+  <!-- Manual / Demo Trigger Panel -->
+  <div class="panel" style="margin-bottom:32px">
+    <h2>⚡ Trigger Recurring Billing Run</h2>
+    <p class="muted" style="font-size:14px;margin-bottom:16px">
+      Evaluates all active subscriptions with <code>next_billing_date &le; target_date</code>.
+      Generates invoices atomically for the current period, reserves discounts, and advances the cycle schedule.
+      Safe and idempotent: subscriptions already billed for their current period are automatically skipped.
+    </p>
+
+    <form method="post" action="{% url 'billing:billing_run_execute' %}" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+      {% csrf_token %}
+      <div style="flex:1;min-width:180px">
+        <label for="target_date" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Target Run Date:</label>
+        <input type="date" name="target_date" id="target_date" value="{{ today|date:'Y-m-d' }}" style="padding:8px 12px;border-radius:4px;border:1px solid var(--line);font-size:14px;width:100%">
+      </div>
+      <button type="submit" class="button button--primary" style="min-height:42px" onclick="return confirm('Run recurring billing for the selected date?')">Execute Billing Cycle</button>
+    </form>
+  </div>
+
+  <!-- Execution History Table -->
+  <div class="panel">
+    <h2>Historical Billing Runs</h2>
+    {% if runs %}
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Billing Runs Audit Table">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Execution Time</th>
+              <th scope="col">Target Date</th>
+              <th scope="col">Triggered By</th>
+              <th scope="col" style="text-align:center">Checked</th>
+              <th scope="col" style="text-align:center">Invoices</th>
+              <th scope="col" class="amount">Total Billed</th>
+              <th scope="col">Status</th>
+              <th scope="col">Log Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for run in runs %}
+              <tr>
+                <td>{{ run.executed_at|date:"d M Y, H:i" }}</td>
+                <td><strong>{{ run.run_date|date:"d M Y" }}</strong></td>
+                <td>{{ run.executed_by.email|default:"Automated Worker" }}</td>
+                <td style="text-align:center">{{ run.subscriptions_checked }}</td>
+                <td style="text-align:center"><span class="badge badge--accent">{{ run.invoices_created }}</span></td>
+                <td class="amount">₹{{ run.total_billed_amount }}</td>
+                <td>
+                  {% if run.success %}
+                    <span class="badge badge--success">Success</span>
+                  {% else %}
+                    <span class="badge badge--warning">Errors Reported</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if run.log_summary %}
+                    <details>
+                      <summary style="font-size:12px;cursor:pointer">View Log ({{ run.invoices_created }} lines)</summary>
+                      <pre style="background:var(--bg);padding:8px;border-radius:4px;font-size:11px;max-height:120px;overflow-y:auto;white-space:pre-wrap;margin-top:6px">{{ run.log_summary }}</pre>
+                    </details>
+                  {% else %}
+                    <span class="muted" style="font-size:12px">No activity</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% include 'components/empty_state.html' with empty_title="No billing runs yet" empty_description="No recurring billing runs have been executed so far." %}
+    {% endif %}
+  </div>
+{% endblock %}

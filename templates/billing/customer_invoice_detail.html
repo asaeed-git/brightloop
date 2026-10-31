@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ invoice.number }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow"><a href="{% url 'billing:customer_invoice_list' %}">← My Invoices</a></p>
+      <h1>{{ invoice.number }}</h1>
+      <p class="muted">
+        Issued on <strong>{{ invoice.issue_date|date:"d M Y" }}</strong> · Due on <strong>{{ invoice.due_date|date:"d M Y" }}</strong>
+        {% if invoice.status == 'PAID' %}
+          <span class="badge badge--success">Paid</span>
+        {% elif invoice.status == 'CONFIRMED' %}
+          <span class="badge badge--accent">Due</span>
+        {% elif invoice.status == 'CANCELLED' %}
+          <span class="badge badge--warning">Cancelled</span>
+        {% endif %}
+        {% if invoice.is_overdue %}<span class="badge badge--warning">Overdue</span>{% endif %}
+      </p>
+    </div>
+    <div>
+      <a href="{% url 'billing:invoice_print' pk=invoice.pk %}" target="_blank" class="button button--primary">🖨 Print / Download</a>
+    </div>
+  </div>
+
+  {% if invoice.subscription %}
+    <div class="panel" style="margin-bottom:24px">
+      <h3>Subscription Details</h3>
+      <p class="muted" style="margin:4px 0 0">
+        Plan: <strong>{{ invoice.subscription.plan.name }}</strong> ({{ invoice.subscription.number }})
+        {% if invoice.period_start and invoice.period_end %}
+          · Coverage: {{ invoice.period_start|date:"d M Y" }} to {{ invoice.period_end|date:"d M Y" }}
+        {% endif %}
+      </p>
+    </div>
+  {% endif %}
+
+  <!-- Line items breakdown -->
+  <div class="panel" style="margin-bottom:24px">
+    <h2>Invoice Breakdown</h2>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Invoice Line Items">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Description</th>
+            <th scope="col" style="text-align:center">Qty</th>
+            <th scope="col" class="amount">Unit Price</th>
+            <th scope="col" class="amount">Gross</th>
+            <th scope="col" class="amount">Discount</th>
+            <th scope="col" class="amount">Tax</th>
+            <th scope="col" class="amount">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in lines %}
+            <tr>
+              <td><strong>{{ line.description }}</strong></td>
+              <td style="text-align:center">{{ line.quantity }}</td>
+              <td class="amount">₹{{ line.unit_price }}</td>
+              <td class="amount">₹{{ line.gross }}</td>
+              <td class="amount">
+                {% if line.discount > 0 %}<span style="color:var(--accent)">-₹{{ line.discount }}</span>{% else %}₹0.00{% endif %}
+              </td>
+              <td class="amount">₹{{ line.tax }}</td>
+              <td class="amount"><strong>₹{{ line.total }}</strong></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Summary -->
+    <div style="max-width:340px;margin-left:auto;margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
+      <dl style="display:grid;grid-template-columns:1fr auto;gap:8px;font-size:14px;margin:0">
+        <dt class="muted">Subtotal:</dt>
+        <dd class="amount">₹{{ invoice.subtotal }}</dd>
+        {% if invoice.discount_total > 0 %}
+          <dt style="color:var(--accent)">Discount:</dt>
+          <dd class="amount" style="color:var(--accent)">-₹{{ invoice.discount_total }}</dd>
+        {% endif %}
+        <dt class="muted">Tax:</dt>
+        <dd class="amount">₹{{ invoice.tax_total }}</dd>
+        <dt style="font-weight:700;font-size:16px;border-top:1px solid var(--line);padding-top:8px">Total:</dt>
+        <dd class="amount" style="font-weight:750;font-size:18px;border-top:1px solid var(--line);padding-top:8px">
+          ₹{{ invoice.total }}
+        </dd>
+        <dt class="muted" style="padding-top:4px">Amount Paid:</dt>
+        <dd class="amount" style="padding-top:4px">₹{{ invoice.amount_paid }}</dd>
+        <dt style="font-weight:700;font-size:15px;border-top:1px solid var(--line);padding-top:8px;color:{% if invoice.amount_due > 0 %}var(--error){% else %}var(--accent){% endif %}">Balance Due:</dt>
+        <dd class="amount" style="font-weight:750;font-size:16px;border-top:1px solid var(--line);padding-top:8px;color:{% if invoice.amount_due > 0 %}var(--error){% else %}var(--accent){% endif %}">
+          ₹{{ invoice.amount_due }}
+        </dd>
+      </dl>
+    </div>
+  </div>
+{% endblock %}

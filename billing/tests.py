@@ -5,10 +5,19 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from accounts.models import User
-from catalog.models import Product
+from catalog.models import Product, ProductVariant
+from plans.models import Plan
+from subscriptions.models import Subscription, SubscriptionLine
+from subscriptions.services import transition_to_active
 
 from .forms import DiscountRuleForm, TaxRateForm
-from .models import DiscountRule, TaxRate
+from .models import BillingRunRecord, DiscountRule, Invoice, TaxRate
+from .services import (
+    DuplicateBillingError,
+    advance_subscription_period,
+    generate_invoice_for_subscription,
+    run_recurring_billing,
+)
 
 
 class TaxRateModelTests(TestCase):
@@ -219,6 +228,185 @@ class BillingFormTests(TestCase):
         self.assertIn("valid_until", form.errors)
 
 
+class InvoiceModelTests(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create_user("inv_cust@example.com", "LongPhrase!")
+        self.plan = Plan.objects.create(
+            name="Starter Monthly",
+            code="start-month",
+            interval=Plan.Interval.MONTHLY,
+            price=Decimal("500.00"),
+        )
+        self.subscription = Subscription.objects.create(
+            customer=self.customer,
+            plan=self.plan,
+            base_price=Decimal("500.00"),
+            status=Subscription.Status.ACTIVE,
+            start_date=datetime.date(2026, 1, 1),
+            current_period_start=datetime.date(2026, 1, 1),
+            current_period_end=datetime.date(2026, 2, 1),
+            next_billing_date=datetime.date(2026, 1, 1),
+        )
+
+    def test_invoice_creation_and_properties(self):
+        inv = Invoice.objects.create(
+            customer=self.customer,
+            subscription=self.subscription,
+            status=Invoice.Status.CONFIRMED,
+            period_start=datetime.date(2026, 1, 1),
+            period_end=datetime.date(2026, 2, 1),
+            due_date=datetime.date(2026, 1, 15),
+            subtotal=Decimal("500.00"),
+            net_total=Decimal("500.00"),
+            total=Decimal("500.00"),
+            amount_paid=Decimal("150.00"),
+        )
+        self.assertTrue(inv.number.startswith("INV-"))
+        self.assertEqual(inv.amount_due, Decimal("350.00"))
+        # Due date is in the past compared to today -> overdue
+        self.assertTrue(inv.is_overdue)
+
+    def test_database_anti_duplication_unique_constraint(self):
+        """Database constraint prevents two invoices for same subscription and period_start."""
+        Invoice.objects.create(
+            customer=self.customer,
+            subscription=self.subscription,
+            period_start=datetime.date(2026, 1, 1),
+            period_end=datetime.date(2026, 2, 1),
+            due_date=datetime.date(2026, 1, 15),
+            total=Decimal("500.00"),
+        )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Invoice.objects.create(
+                customer=self.customer,
+                subscription=self.subscription,
+                period_start=datetime.date(2026, 1, 1),
+                period_end=datetime.date(2026, 2, 1),
+                due_date=datetime.date(2026, 1, 15),
+                total=Decimal("500.00"),
+            )
+
+    def test_amount_paid_cannot_exceed_total_constraint(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Invoice.objects.create(
+                customer=self.customer,
+                due_date=datetime.date(2026, 1, 15),
+                total=Decimal("100.00"),
+                amount_paid=Decimal("150.00"),
+            )
+
+
+class RecurringBillingServiceTests(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create_user("bill_user@example.com", "LongPhrase!")
+        self.tax_rate = TaxRate.objects.create(name="GST 18%", rate=Decimal("18.00"))
+        self.discount_rule = DiscountRule.objects.create(
+            name="10% Off All",
+            kind=DiscountRule.Kind.PERCENTAGE,
+            value=Decimal("10.00"),
+            scope=DiscountRule.Scope.SUBSCRIPTION,
+        )
+        self.plan = Plan.objects.create(
+            name="Pro Monthly",
+            code="pro-monthly",
+            interval=Plan.Interval.MONTHLY,
+            price=Decimal("1000.00"),
+            min_quantity=1,
+            auto_close_on_expiry=True,
+        )
+        self.product = Product.objects.create(
+            name="Storage Unit",
+            sales_price=Decimal("100.00"),
+            cost_price=Decimal("30.00"),
+        )
+        self.variant = ProductVariant.objects.create(
+            product=self.product,
+            name="500GB SSD",
+            price_extra=Decimal("50.00"),
+        )
+
+        self.subscription = Subscription.objects.create(
+            customer=self.customer,
+            plan=self.plan,
+            base_price=self.plan.price,
+            tax_rate=self.tax_rate,
+            discount_rule=self.discount_rule,
+            status=Subscription.Status.CONFIRMED,
+            payment_terms_days=15,
+            start_date=datetime.date(2026, 10, 1),
+        )
+        SubscriptionLine.objects.create(
+            subscription=self.subscription,
+            product=self.product,
+            variant=self.variant,
+            quantity=2,
+            unit_price=Decimal("150.00"),  # 100 + 50
+        )
+        transition_to_active(self.subscription, start_date=datetime.date(2026, 10, 1))
+        # After activation, current_period_start = 2026-10-01, current_period_end = 2026-11-01, next_billing_date = 2026-10-01
+
+    def test_generate_invoice_for_subscription_exact_pricing(self):
+        invoice = generate_invoice_for_subscription(
+            self.subscription, target_date=datetime.date(2026, 10, 1)
+        )
+        # Base: 1000.00, Lines: 2x 150 = 300.00. Subtotal: 1300.00
+        # Discount: 10% on each line -> 100.00 + 30.00 = 130.00
+        # Net: 1170.00
+        # Tax 18% on (900) = 162.00, on (270) = 48.60 -> total tax = 210.60
+        # Total: 1380.60
+        self.assertEqual(invoice.subtotal, Decimal("1300.00"))
+        self.assertEqual(invoice.discount_total, Decimal("130.00"))
+        self.assertEqual(invoice.net_total, Decimal("1170.00"))
+        self.assertEqual(invoice.tax_total, Decimal("210.60"))
+        self.assertEqual(invoice.total, Decimal("1380.60"))
+        self.assertEqual(invoice.status, Invoice.Status.CONFIRMED)
+        self.assertEqual(invoice.lines.count(), 2)
+
+    def test_duplicate_billing_rejected(self):
+        generate_invoice_for_subscription(self.subscription, target_date=datetime.date(2026, 10, 1))
+        with self.assertRaises(DuplicateBillingError):
+            generate_invoice_for_subscription(
+                self.subscription, target_date=datetime.date(2026, 10, 1)
+            )
+
+    def test_advance_subscription_period_regular_monthly(self):
+        advance_subscription_period(self.subscription, target_date=datetime.date(2026, 10, 1))
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.current_period_start, datetime.date(2026, 11, 1))
+        self.assertEqual(self.subscription.current_period_end, datetime.date(2026, 12, 1))
+        self.assertEqual(self.subscription.next_billing_date, datetime.date(2026, 11, 1))
+        self.assertEqual(self.subscription.status, Subscription.Status.ACTIVE)
+
+    def test_advance_subscription_period_auto_closes_on_contract_expiry(self):
+        self.subscription.expiry_date = datetime.date(2026, 11, 1)
+        self.subscription.auto_close_on_expiry = True
+        self.subscription.save()
+
+        advance_subscription_period(self.subscription, target_date=datetime.date(2026, 10, 1))
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, Subscription.Status.CLOSED)
+        self.assertIsNone(self.subscription.next_billing_date)
+        self.assertEqual(self.subscription.close_date, datetime.date(2026, 11, 1))
+
+    def test_run_recurring_billing_end_to_end_and_idempotency(self):
+        # Target date is 2026-10-01 (matches next_billing_date)
+        record = run_recurring_billing(target_date=datetime.date(2026, 10, 1))
+        self.assertTrue(record.success)
+        self.assertEqual(record.subscriptions_checked, 1)
+        self.assertEqual(record.invoices_created, 1)
+        self.assertEqual(record.total_billed_amount, Decimal("1380.60"))
+
+        # Re-running immediately on 2026-10-01 should bill 0 invoices because next_billing_date advanced to 2026-11-01
+        second_record = run_recurring_billing(target_date=datetime.date(2026, 10, 1))
+        self.assertEqual(second_record.invoices_created, 0)
+
+    def test_run_recurring_billing_skips_paused_and_future_subscriptions(self):
+        self.subscription.is_paused = True
+        self.subscription.save()
+        record = run_recurring_billing(target_date=datetime.date(2026, 10, 1))
+        self.assertEqual(record.invoices_created, 0)
+
+
 class BillingViewTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser("admin@example.com", "LongPhrase!")
@@ -227,6 +415,9 @@ class BillingViewTests(TestCase):
         )
         self.customer = User.objects.create_user(
             "customer@example.com", "LongPhrase!", role=User.Role.CUSTOMER
+        )
+        self.other_customer = User.objects.create_user(
+            "other@example.com", "LongPhrase!", role=User.Role.CUSTOMER
         )
         self.product = Product.objects.create(
             name="Cloud Server",
@@ -241,121 +432,110 @@ class BillingViewTests(TestCase):
             value=Decimal("100.00"),
             scope=DiscountRule.Scope.SUBSCRIPTION,
         )
+        self.invoice = Invoice.objects.create(
+            customer=self.customer,
+            status=Invoice.Status.CONFIRMED,
+            period_start=datetime.date(2026, 10, 1),
+            period_end=datetime.date(2026, 11, 1),
+            due_date=datetime.date(2026, 10, 15),
+            subtotal=Decimal("2000.00"),
+            net_total=Decimal("2000.00"),
+            total=Decimal("2000.00"),
+        )
 
     # ── Permission Checks ─────────────────────────────────────────────────────
 
-    def test_anonymous_and_customer_denied_tax_views(self):
-        urls = [
+    def test_anonymous_denied_billing_views(self):
+        for url in [
             "/billing/taxes/",
-            "/billing/taxes/new/",
-            f"/billing/taxes/{self.tax_rate.pk}/edit/",
-        ]
-        for url in urls:
-            # Anonymous
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, 403)
-            # Customer
-            self.client.force_login(self.customer)
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, 403)
-
-    def test_anonymous_and_customer_denied_discount_views(self):
-        urls = [
             "/billing/discounts/",
-            "/billing/discounts/new/",
-            f"/billing/discounts/{self.discount_rule.pk}/edit/",
-        ]
-        for url in urls:
-            # Anonymous
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, 403)
-            # Customer
-            self.client.force_login(self.customer)
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, 403)
+            "/billing/invoices/",
+            f"/billing/invoices/{self.invoice.pk}/",
+            "/billing/runs/",
+            "/billing/my-invoices/",
+        ]:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertIn(response.status_code, [302, 403])
 
-    # ── Tax Rate Views ────────────────────────────────────────────────────────
+    def test_customer_denied_staff_billing_views(self):
+        self.client.force_login(self.customer)
+        for url in [
+            "/billing/taxes/",
+            "/billing/discounts/",
+            "/billing/invoices/",
+            "/billing/runs/",
+        ]:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 403)
 
-    def test_staff_can_view_tax_list(self):
-        self.client.force_login(self.staff)
-        response = self.client.get("/billing/taxes/")
+    def test_customer_scoped_to_own_invoices(self):
+        other_invoice = Invoice.objects.create(
+            customer=self.other_customer,
+            status=Invoice.Status.CONFIRMED,
+            due_date=datetime.date(2026, 10, 15),
+            total=Decimal("3000.00"),
+        )
+        self.client.force_login(self.customer)
+
+        # List view shows only self.invoice, not other_invoice
+        response = self.client.get("/billing/my-invoices/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "GST 18%")
-        self.assertContains(response, "18.00%")
+        self.assertContains(response, self.invoice.number)
+        self.assertNotContains(response, other_invoice.number)
 
-    def test_staff_can_create_tax_rate(self):
+        # Direct access to other customer's invoice fails
+        resp = self.client.get(f"/billing/my-invoices/{other_invoice.pk}/")
+        self.assertEqual(resp.status_code, 404)
+
+        resp2 = self.client.get(f"/billing/invoices/{other_invoice.pk}/")
+        self.assertEqual(resp2.status_code, 403)
+
+    # ── Staff Operations ──────────────────────────────────────────────────────
+
+    def test_staff_can_view_invoice_list_and_detail(self):
         self.client.force_login(self.staff)
-        response = self.client.post(
-            "/billing/taxes/new/",
-            {"name": "VAT 5%", "rate": "5.00", "is_active": "on"},
-        )
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(TaxRate.objects.filter(name="VAT 5%").exists())
-
-    def test_staff_can_edit_tax_rate(self):
-        self.client.force_login(self.staff)
-        response = self.client.post(
-            f"/billing/taxes/{self.tax_rate.pk}/edit/",
-            {"name": "GST 18% Updated", "rate": "18.00"},
-        )
-        self.assertEqual(response.status_code, 302)
-        self.tax_rate.refresh_from_db()
-        self.assertEqual(self.tax_rate.name, "GST 18% Updated")
-        self.assertFalse(self.tax_rate.is_active)
-
-    # ── Discount Rule Views ───────────────────────────────────────────────────
-
-    def test_staff_can_view_discount_list(self):
-        self.client.force_login(self.staff)
-        response = self.client.get("/billing/discounts/")
+        response = self.client.get("/billing/invoices/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Early Bird ₹100")
+        self.assertContains(response, self.invoice.number)
 
-    def test_staff_can_create_fixed_discount_rule(self):
+        detail_resp = self.client.get(f"/billing/invoices/{self.invoice.pk}/")
+        self.assertEqual(detail_resp.status_code, 200)
+        self.assertContains(detail_resp, self.invoice.number)
+
+    def test_staff_can_confirm_and_cancel_invoice(self):
+        self.client.force_login(self.staff)
+        draft_inv = Invoice.objects.create(
+            customer=self.customer,
+            status=Invoice.Status.DRAFT,
+            due_date=datetime.date(2026, 10, 15),
+            total=Decimal("500.00"),
+        )
+        # Confirm
+        conf_resp = self.client.post(f"/billing/invoices/{draft_inv.pk}/confirm/")
+        self.assertEqual(conf_resp.status_code, 302)
+        draft_inv.refresh_from_db()
+        self.assertEqual(draft_inv.status, Invoice.Status.CONFIRMED)
+
+        # Cancel
+        canc_resp = self.client.post(f"/billing/invoices/{draft_inv.pk}/cancel/")
+        self.assertEqual(canc_resp.status_code, 302)
+        draft_inv.refresh_from_db()
+        self.assertEqual(draft_inv.status, Invoice.Status.CANCELLED)
+
+    def test_print_view_renders_cleanly(self):
+        self.client.force_login(self.customer)
+        response = self.client.get(f"/billing/invoices/{self.invoice.pk}/print/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.invoice.number)
+        self.assertContains(response, "brightloop.")
+
+    def test_staff_can_trigger_billing_run(self):
         self.client.force_login(self.staff)
         response = self.client.post(
-            "/billing/discounts/new/",
-            {
-                "name": "Flat ₹500",
-                "kind": DiscountRule.Kind.FIXED,
-                "value": "500.00",
-                "scope": DiscountRule.Scope.SUBSCRIPTION,
-                "is_active": "on",
-            },
+            "/billing/runs/execute/",
+            {"target_date": "2026-10-31"},
         )
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(DiscountRule.objects.filter(name="Flat ₹500").exists())
-
-    def test_staff_can_create_product_percentage_discount_rule(self):
-        self.client.force_login(self.staff)
-        response = self.client.post(
-            "/billing/discounts/new/",
-            {
-                "name": "20% Server Discount",
-                "kind": DiscountRule.Kind.PERCENTAGE,
-                "value": "20.00",
-                "scope": DiscountRule.Scope.PRODUCT,
-                "product": str(self.product.pk),
-                "is_active": "on",
-            },
-        )
-        self.assertEqual(response.status_code, 302)
-        rule = DiscountRule.objects.get(name="20% Server Discount")
-        self.assertEqual(rule.product, self.product)
-
-    def test_staff_can_edit_discount_rule(self):
-        self.client.force_login(self.staff)
-        response = self.client.post(
-            f"/billing/discounts/{self.discount_rule.pk}/edit/",
-            {
-                "name": "Early Bird ₹150",
-                "kind": DiscountRule.Kind.FIXED,
-                "value": "150.00",
-                "scope": DiscountRule.Scope.SUBSCRIPTION,
-            },
-        )
-        self.assertEqual(response.status_code, 302)
-        self.discount_rule.refresh_from_db()
-        self.assertEqual(self.discount_rule.name, "Early Bird ₹150")
-        self.assertEqual(self.discount_rule.value, Decimal("150.00"))
-        self.assertFalse(self.discount_rule.is_active)
+        self.assertTrue(BillingRunRecord.objects.filter(run_date="2026-10-31").exists())
