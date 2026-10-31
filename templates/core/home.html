@@ -1,16 +1,30 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Brightloop</title>
-</head>
-<body>
-  <main>
-    <h1>Brightloop</h1>
-    <p>Subscription management for your business.</p>
-    <p>The application foundation is running. Customer subscriptions and billing are still being developed.</p>
-    <p><a href="{% url 'admin:index' %}">Administrator sign in</a></p>
-  </main>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Your workspace · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <p class="eyebrow">A clearer view of your business</p>
+    <h1>Your workspace, coming together.</h1>
+    <p class="muted">Make room for the work that matters.</p>
+  </div>
+  <section class="welcome-panel" aria-labelledby="welcome-title">
+    <div class="welcome-copy">
+      <span class="badge badge--accent">Getting started</span>
+      <h2 id="welcome-title">Every subscription.<br>One continuous loop.</h2>
+      <p>Bring your customers, recurring invoices, and payments into one thoughtfully organized workspace.</p>
+      {% if user.is_authenticated and user.is_active %}
+        {% if user.role == 'ADMIN' and user.is_staff %}
+          <a class="button button--primary" href="{% url 'admin:index' %}">Open administration <span aria-hidden="true">↗</span></a>
+        {% else %}
+          <p class="welcome-status">You’re signed in. Your workspace features will appear here as they become available.</p>
+        {% endif %}
+      {% else %}
+        <a class="button button--primary" href="{% url 'admin:login' %}">Administrator sign in <span aria-hidden="true">↗</span></a>
+      {% endif %}
+    </div>
+    <div class="loop-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-core">b<span>.</span></div><span class="orbit-point"></span></div>
+  </section>
+  <section class="panel availability-panel" aria-labelledby="availability-title">
+    <div class="section-icon" aria-hidden="true">↗</div>
+    <div><h2 id="availability-title">A foundation for what’s next</h2><p class="muted">Customer subscriptions and billing are still being developed. This workspace does not yet show financial activity.</p></div>
+  </section>
+{% endblock %}

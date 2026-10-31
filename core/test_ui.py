@@ -1,0 +1,69 @@
+from django import forms
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.staticfiles import finders
+from django.template.loader import render_to_string
+from django.test import RequestFactory, SimpleTestCase
+from django.urls import resolve
+
+from accounts.models import User
+
+
+class SharedUITests(SimpleTestCase):
+    def render_home(self, user):
+        request = RequestFactory().get("/")
+        request.user = user
+        request.resolver_match = resolve("/")
+        return render_to_string("core/home.html", request=request)
+
+    def test_anonymous_has_real_sign_in_route_and_no_administration_menu(self):
+        html = self.render_home(AnonymousUser())
+        self.assertIn('href="/admin/login/"', html)
+        self.assertNotIn('href="/admin/"', html)
+        self.assertIn('href="#main-content"', html)
+        self.assertIsNotNone(finders.find("brightloop/app.css"))
+
+    def test_only_active_admin_with_admin_access_sees_administration(self):
+        for role, active, staff, expected in [
+            (User.Role.ADMIN, True, True, True),
+            (User.Role.ADMIN, True, False, False),
+            (User.Role.ADMIN, False, True, False),
+            (User.Role.STAFF, True, False, False),
+            (User.Role.CUSTOMER, True, False, False),
+        ]:
+            with self.subTest(role=role, active=active, staff=staff):
+                user = User(role=role, is_active=active, is_staff=staff)
+                html = self.render_home(user)
+                self.assertEqual('href="/admin/"' in html, expected)
+                self.assertNotIn('href="/invoices/"', html)
+
+    def test_bound_form_keeps_input_and_accessible_errors(self):
+        class SampleForm(forms.Form):
+            name = forms.CharField(help_text="Use your full name.")
+            email = forms.EmailField()
+
+        form = SampleForm({"name": '<script>alert("x")</script>', "email": "invalid"})
+        self.assertFalse(form.is_valid())
+        html = render_to_string("components/form_fields.html", {"form": form})
+        self.assertIn('value="invalid"', html)
+        self.assertIn('aria-invalid="true"', html)
+        self.assertIn('aria-describedby="id_email_error"', html)
+        self.assertIn('for="id_email"', html)
+        self.assertIn("&lt;script&gt;", html)
+        self.assertNotIn("<script>", html)
+
+    def test_form_renders_non_field_and_hidden_errors(self):
+        class SampleForm(forms.Form):
+            record = forms.IntegerField(widget=forms.HiddenInput)
+
+        form = SampleForm({"record": "invalid"})
+        form.is_valid()
+        form.add_error(None, "Please review this request.")
+        html = render_to_string("components/form_fields.html", {"form": form})
+        self.assertIn("Please review this request.", html)
+        self.assertIn("Enter a whole number.", html)
+
+    def test_empty_state_escapes_feature_supplied_copy(self):
+        html = render_to_string(
+            "components/empty_state.html", {"empty_title": "<script>alert(1)</script>"}
+        )
+        self.assertNotIn("<script>", html)
