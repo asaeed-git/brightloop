@@ -4,7 +4,8 @@ permissions:
   contents: read
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Python 3.14.4 is available on 24.04, not on the newer ubuntu-latest image.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:17.11

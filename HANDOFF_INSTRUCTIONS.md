@@ -76,6 +76,8 @@ Vercel is a possible deployment target discussed with the user. No hosting chang
 
 ## 7. Open issues and risks
 
+- CI failure diagnosed in run 41167116572: ubuntu-latest resolved to Ubuntu 26.04, where setup-python cannot supply pinned Python 3.14.4. Application checks were skipped. Fix in progress: pin runner to ubuntu-24.04, verified supported by actions/python-versions manifest. Await the new remote run before claiming CI passes. No application or dependency versions changed.
+
 - Initial source baseline 29149d1 is published. Syed must clone and review it, including any subsequent documentation commits, before parallel feature implementation.
 - Syed's approval and local run are pending. Shared UI is unstarted; full M0 acceptance is not claimed.
 - Auth throttling/public flows and all financial correctness/concurrency work remain; do not expose the starter as a production-ready app.

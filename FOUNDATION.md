@@ -18,6 +18,7 @@ Publishing this candidate does not mean the full M0 gate has passed.
 | Driver | psycopg / psycopg-binary 3.3.6 |
 | Environment loader | python-dotenv 1.2.4 |
 | Checks | Django test runner + Ruff 0.17.3 |
+| CI runner | Ubuntu 24.04, pinned to support Python 3.14.4; do not use the moving ubuntu-latest label |
 | Frontend | Django templates/forms, HTML/CSS, optional small JavaScript modules |
 | Dependency installation | pip with exact committed requirements.txt pins |
 | Packaging | One Django application; no microservices, Node build, or separate SPA |
