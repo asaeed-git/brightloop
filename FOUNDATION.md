@@ -44,10 +44,10 @@ used for development and tests as well as planned hosting so concurrency tests a
 | core/ | Abbas | Home/readiness endpoints |
 | templates/core/home.html | Syed | Implemented workspace welcome screen |
 | templates/base.html, core/static/ | Syed | Implemented shared UI shell & design system |
-| catalog/, plans/, subscriptions/ | Abbas | Catalog implemented; plans/subscriptions pending |
-| pricing/ | Syed | Pure calculator implemented on arhan/pricing-calculator; review pending |
+| catalog/, plans/, subscriptions/ | Abbas | Catalog and Plans implemented; subscriptions next |
+| pricing/ | Syed | Pure calculator implemented and integrated into template previews |
 | billing/, payments/, reporting/ | Syed | Planned modules |
-| docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.2, shared-ui, financial proposal |
+| docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.4, shared-ui, financial proposal, pricing v0.1 |
 
 Keep views thin, validation in forms or explicit input validators, business operations in
 service functions, and database constraints in models/migrations. Use the ORM and parameterized

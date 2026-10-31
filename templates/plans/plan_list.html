@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Subscription Plans · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow">Plans</p>
+      <h1>Subscription Plans</h1>
+      <p class="muted">Available billing intervals, minimum requirements, and lifecycle rules.</p>
+    </div>
+    {% if is_staff %}
+      <div style="display:flex;gap:8px">
+        <a href="{% url 'plans:template_list' %}" class="button">Quotation Templates</a>
+        <a href="{% url 'plans:plan_create' %}" class="button button--primary">+ New Plan</a>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if plans %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:20px;margin-bottom:32px">
+      {% for plan in plans %}
+        <div class="panel" style="display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+              <h3><a href="{% url 'plans:plan_detail' pk=plan.pk %}">{{ plan.name }}</a></h3>
+              <span class="badge badge--accent">{{ plan.get_interval_display }}</span>
+            </div>
+            <p style="font-size:28px;font-weight:750;margin:12px 0 4px">₹{{ plan.price }}<span class="muted" style="font-size:13px;font-weight:400"> / {{ plan.get_interval_display|lower }}</span></p>
+            <p class="muted" style="font-size:13px;margin-bottom:12px">Min. {{ plan.min_quantity }} unit{{ plan.min_quantity|pluralize }}</p>
+            {% if plan.description %}
+              <p class="muted" style="font-size:14px">{{ plan.description|truncatewords:20 }}</p>
+            {% endif %}
+            
+            <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:6px">
+              {% if plan.can_pause %}<span class="badge" title="Pause permitted">Pause</span>{% endif %}
+              {% if plan.can_early_close %}<span class="badge" title="Early termination permitted">Early Close</span>{% endif %}
+              {% if plan.can_renew %}<span class="badge" title="Renewable">Renewable</span>{% endif %}
+              {% if not plan.is_active %}<span class="badge badge--warning">Inactive</span>{% endif %}
+            </div>
+          </div>
+
+          <div style="margin-top:20px;display:flex;gap:8px;border-top:1px solid var(--line);padding-top:14px">
+            <a href="{% url 'plans:plan_detail' pk=plan.pk %}" class="button" style="flex:1;min-height:36px;font-size:13px">Details</a>
+            {% if is_staff %}
+              <a href="{% url 'plans:plan_edit' pk=plan.pk %}" class="button" style="min-height:36px;font-size:13px">Edit</a>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No plans available" empty_description="No active subscription plans are currently open for enrollment." %}
+  {% endif %}
+{% endblock %}

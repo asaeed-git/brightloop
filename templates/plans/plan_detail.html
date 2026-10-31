@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}{{ plan.name }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow"><a href="{% url 'plans:plan_list' %}">← Plans</a></p>
+      <h1>{{ plan.name }}</h1>
+      <p class="muted">
+        <span class="badge badge--accent">{{ plan.get_interval_display }} billing</span>
+        <span class="badge">Code: {{ plan.code }}</span>
+        {% if plan.is_active %}
+          <span class="badge badge--success">Active</span>
+        {% else %}
+          <span class="badge badge--warning">Inactive</span>
+        {% endif %}
+      </p>
+    </div>
+    {% if is_staff %}
+      <div style="display:flex;gap:8px">
+        <a href="{% url 'plans:plan_edit' pk=plan.pk %}" class="button">Edit Plan</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:24px;margin-bottom:32px">
+    <div class="panel">
+      <h2>Pricing & Cadence</h2>
+      <p style="font-size:32px;font-weight:750;margin:12px 0 4px">₹{{ plan.price }}</p>
+      <p class="muted" style="font-size:13px">Base recurring fee per {{ plan.get_interval_display|lower }} cycle</p>
+
+      <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:16px">
+        <dl style="display:grid;grid-template-columns:140px 1fr;gap:10px;font-size:14px;margin:0">
+          <dt class="muted">Interval:</dt>
+          <dd><strong>{{ plan.get_interval_display }}</strong></dd>
+          <dt class="muted">Min. Quantity:</dt>
+          <dd><strong>{{ plan.min_quantity }}</strong> seat{{ plan.min_quantity|pluralize }}</dd>
+          <dt class="muted">Available From:</dt>
+          <dd>{{ plan.available_from|default:"Immediate" }}</dd>
+          <dt class="muted">Available Until:</dt>
+          <dd>{{ plan.available_until|default:"Open-ended" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Lifecycle Policies</h2>
+      <p class="muted" style="font-size:13px;margin-bottom:16px">Configured policy controls for subscriber self-service and automated transitions.</p>
+      <ul style="list-style:none;padding:0;margin:0;display:grid;gap:12px;font-size:14px">
+        <li style="display:flex;align-items:center;gap:10px">
+          <span style="color:{% if plan.can_pause %}var(--accent){% else %}var(--muted){% endif %}">{% if plan.can_pause %}✔{% else %}✖{% endif %}</span>
+          <span><strong>Pause permitted:</strong> {% if plan.can_pause %}Subscribers can pause this subscription.{% else %}Pausing is disabled.{% endif %}</span>
+        </li>
+        <li style="display:flex;align-items:center;gap:10px">
+          <span style="color:{% if plan.can_early_close %}var(--accent){% else %}var(--muted){% endif %}">{% if plan.can_early_close %}✔{% else %}✖{% endif %}</span>
+          <span><strong>Early closure:</strong> {% if plan.can_early_close %}Early termination allowed before term end.{% else %}Subscribers cannot close early.{% endif %}</span>
+        </li>
+        <li style="display:flex;align-items:center;gap:10px">
+          <span style="color:{% if plan.auto_close_on_expiry %}var(--accent){% else %}var(--muted){% endif %}">{% if plan.auto_close_on_expiry %}✔{% else %}✖{% endif %}</span>
+          <span><strong>Auto-close on expiry:</strong> {% if plan.auto_close_on_expiry %}Subscription automatically closes upon reaching expiry.{% else %}Manual action required.{% endif %}</span>
+        </li>
+        <li style="display:flex;align-items:center;gap:10px">
+          <span style="color:{% if plan.can_renew %}var(--accent){% else %}var(--muted){% endif %}">{% if plan.can_renew %}✔{% else %}✖{% endif %}</span>
+          <span><strong>Renewable:</strong> {% if plan.can_renew %}Subscribers can renew after term completion.{% else %}No renewals allowed.{% endif %}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  {% if plan.description %}
+    <div class="panel" style="margin-bottom:32px">
+      <h2>Description & Features</h2>
+      <p class="muted" style="margin-top:8px;white-space:pre-line">{{ plan.description }}</p>
+    </div>
+  {% endif %}
+{% endblock %}

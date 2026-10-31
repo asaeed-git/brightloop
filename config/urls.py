@@ -10,5 +10,6 @@ urlpatterns = [
     path("health/", health, name="health"),
     path("accounts/", include("accounts.urls")),
     path("catalog/", include("catalog.urls")),
+    path("plans/", include("plans.urls")),
     path("admin/", admin.site.urls),
 ]

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Quotation Templates · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow"><a href="{% url 'plans:plan_list' %}">← Plans</a></p>
+      <h1>Quotation Templates</h1>
+      <p class="muted">Pre-configured bundles of plans and products used to generate customer quotations rapidly.</p>
+    </div>
+    <a href="{% url 'plans:template_create' %}" class="button button--primary">+ New Template</a>
+  </div>
+
+  {% if templates %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Quotation Templates">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Template Name</th>
+            <th scope="col">Plan</th>
+            <th scope="col">Cadence</th>
+            <th scope="col">Validity</th>
+            <th scope="col">Lines</th>
+            <th scope="col">Status</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in templates %}
+            <tr>
+              <td><strong><a href="{% url 'plans:template_detail' pk=t.pk %}">{{ t.name }}</a></strong></td>
+              <td><a href="{% url 'plans:plan_detail' pk=t.plan.pk %}">{{ t.plan.name }}</a></td>
+              <td><span class="badge">{{ t.plan.get_interval_display }}</span></td>
+              <td class="muted">{{ t.validity_days }} days</td>
+              <td>
+                <span class="badge badge--accent">{{ t.lines.count }} line{{ t.lines.count|pluralize }}</span>
+              </td>
+              <td>
+                {% if t.is_active %}
+                  <span class="badge badge--success">Active</span>
+                {% else %}
+                  <span class="badge badge--warning">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'plans:template_detail' pk=t.pk %}" class="button" style="min-height:30px;padding:4px 10px;font-size:12px">View</a>
+                <a href="{% url 'plans:template_edit' pk=t.pk %}" class="button" style="min-height:30px;padding:4px 10px;font-size:12px">Edit</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No templates yet" empty_description="Create a quotation template to bundle plans and products for fast quoting." %}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}{{ template.name }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow"><a href="{% url 'plans:template_list' %}">← Templates</a></p>
+      <h1>{{ template.name }}</h1>
+      <p class="muted">
+        Plan: <strong><a href="{% url 'plans:plan_detail' pk=template.plan.pk %}">{{ template.plan.name }}</a></strong>
+        <span class="badge badge--accent">{{ template.plan.get_interval_display }}</span>
+        <span class="badge">Valid for {{ template.validity_days }} days</span>
+        {% if template.is_active %}<span class="badge badge--success">Active</span>{% else %}<span class="badge badge--warning">Inactive</span>{% endif %}
+      </p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <a href="{% url 'plans:template_edit' pk=template.pk %}" class="button">Edit Template</a>
+    </div>
+  </div>
+
+  {% if template.notes %}
+    <div class="panel" style="margin-bottom:24px">
+      <h3>Template Terms / Notes</h3>
+      <p class="muted" style="margin:8px 0 0;white-space:pre-line">{{ template.notes }}</p>
+    </div>
+  {% endif %}
+
+  <!-- Quotation Line Items -->
+  <div class="panel" style="margin-bottom:32px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2>Configured Product Lines</h2>
+    </div>
+
+    {% if lines %}
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Template Lines">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Product / Item</th>
+              <th scope="col">Variant</th>
+              <th scope="col" class="amount">Unit Price</th>
+              <th scope="col" style="text-align:center">Quantity</th>
+              <th scope="col" class="amount">Line Subtotal</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in lines %}
+              <tr>
+                <td><strong>{{ line.product.name }}</strong></td>
+                <td>
+                  {% if line.variant %}
+                    <span class="badge badge--accent">{{ line.variant.name }}</span>
+                    {% if line.variant.price_extra != 0 %}
+                      <small class="muted">(+₹{{ line.variant.price_extra }})</small>
+                    {% endif %}
+                  {% else %}
+                    <span class="muted">Standard</span>
+                  {% endif %}
+                </td>
+                <td class="amount">₹{{ line.unit_price }}</td>
+                <td style="text-align:center">{{ line.quantity }}</td>
+                <td class="amount"><strong>₹{{ line.line_total }}</strong></td>
+                <td>
+                  <form method="post" action="{% url 'plans:template_line_delete' pk=template.pk line_pk=line.pk %}" style="margin:0">
+                    {% csrf_token %}
+                    <button type="submit" class="button" style="min-height:28px;padding:2px 8px;font-size:12px;color:var(--error)" onclick="return confirm('Remove line?')">Remove</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% include 'components/empty_state.html' with empty_title="No product lines added" empty_description="Add products to bundle with the base plan in this quotation template." %}
+    {% endif %}
+
+    <!-- Add Line Form -->
+    <div style="margin-top:24px;border-top:1px solid var(--line);padding-top:20px">
+      <h3>+ Add Product Line</h3>
+      <form method="post" action="{% url 'plans:template_line_create' pk=template.pk %}" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
+        {% csrf_token %}
+        <div style="flex:2;min-width:200px">
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Product</label>
+          {{ line_form.product }}
+        </div>
+        <div style="flex:2;min-width:200px">
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Variant (optional)</label>
+          {{ line_form.variant }}
+        </div>
+        <div style="flex:1;min-width:100px">
+          <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Quantity</label>
+          {{ line_form.quantity }}
+        </div>
+        <button type="submit" class="button button--primary" style="min-height:44px">Add Line</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Pricing Preview Box using B2 pricing calculator -->
+  {% if preview_total %}
+    <div class="panel" style="max-width:480px;margin-left:auto">
+      <h2>Estimated Quote Value (per cycle)</h2>
+      <p class="muted" style="font-size:13px">Preview calculated with the shared B2 pricing service.</p>
+      
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+        <dl style="display:grid;grid-template-columns:1fr auto;gap:8px;font-size:14px;margin:0">
+          <dt>Base Plan ({{ template.plan.name }}):</dt>
+          <dd class="amount">₹{{ template.plan.price }}</dd>
+          
+          {% if lines %}
+            <dt>Product Items Subtotal:</dt>
+            <dd class="amount">₹{{ preview_total.subtotal }}</dd>
+          {% endif %}
+          
+          <dt style="font-weight:700;font-size:16px;border-top:1px solid var(--line);padding-top:8px">Total / Cycle:</dt>
+          <dd class="amount" style="font-weight:750;font-size:18px;color:var(--accent);border-top:1px solid var(--line);padding-top:8px">
+            ₹{{ preview_total.total }}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
