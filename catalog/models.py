@@ -1,6 +1,7 @@
 import uuid
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -50,6 +51,20 @@ class Product(models.Model):
             ),
         ]
 
+    def clean(self):
+        super().clean()
+        if self.pk and self.sales_price is not None:
+            for variant in self.variants.all():
+                if self.sales_price + variant.price_extra < Decimal("0.00"):
+                    raise ValidationError(
+                        {
+                            "sales_price": (
+                                f"Lowering sales price to ₹{self.sales_price} would make variant "
+                                f"'{variant.name}' effective price negative."
+                            )
+                        }
+                    )
+
     def __str__(self):
         return self.name
 
@@ -96,6 +111,16 @@ class ProductVariant(models.Model):
                 name="catalog_variant_product_name_unique",
             ),
         ]
+
+    def clean(self):
+        super().clean()
+        if hasattr(self, "product") and self.product_id:
+            if self.product.sales_price + (self.price_extra or Decimal("0.00")) < Decimal("0.00"):
+                raise ValidationError(
+                    {
+                        "price_extra": "Effective sales price (base product price + variant adjustment) cannot be negative."
+                    }
+                )
 
     def __str__(self):
         return f"{self.product.name} - {self.name}"

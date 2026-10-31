@@ -272,6 +272,25 @@ class AuthFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("_auth_user_id", self.client.session)
 
+    def test_throttle_uses_remote_addr_ignoring_spoofed_forwarded_for(self):
+        from django.core.cache import cache
+        from django.test import RequestFactory
+
+        from accounts.throttle import check_throttle
+
+        cache.clear()
+        factory = RequestFactory()
+        for i in range(10):
+            req = factory.post(
+                "/accounts/login/", REMOTE_ADDR="192.0.2.1", HTTP_X_FORWARDED_FOR=f"10.0.0.{i}"
+            )
+            self.assertTrue(check_throttle(req, "test_action", limit=10, window=60))
+
+        blocked_req = factory.post(
+            "/accounts/login/", REMOTE_ADDR="192.0.2.1", HTTP_X_FORWARDED_FOR="10.0.0.99"
+        )
+        self.assertFalse(check_throttle(blocked_req, "test_action", limit=10, window=60))
+
     # ── Logout ────────────────────────────────────────────────────────────────
 
     def test_logout_post_clears_session_and_redirects(self):

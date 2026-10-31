@@ -71,6 +71,29 @@ class CatalogModelTests(TestCase):
                 price_extra=Decimal("50.00"),
             )
 
+    def test_variant_clean_rejects_negative_effective_price(self):
+        from django.core.exceptions import ValidationError
+
+        variant = ProductVariant(
+            product=self.product,
+            name="Discounted",
+            price_extra=Decimal("-1300.00"),
+        )
+        with self.assertRaises(ValidationError):
+            variant.clean()
+
+    def test_product_clean_rejects_lowering_price_below_variant_adjustment(self):
+        from django.core.exceptions import ValidationError
+
+        ProductVariant.objects.create(
+            product=self.product,
+            name="Discounted Variant",
+            price_extra=Decimal("-500.00"),
+        )
+        self.product.sales_price = Decimal("400.00")
+        with self.assertRaises(ValidationError):
+            self.product.clean()
+
 
 class CatalogViewTests(TestCase):
     def setUp(self):
@@ -181,6 +204,36 @@ class CatalogViewTests(TestCase):
         variant = ProductVariant.objects.get(name="Add-on Support (+560)")
         self.assertEqual(variant.price_extra, Decimal("560.00"))
         self.assertEqual(variant.effective_sales_price, Decimal("5560.00"))
+
+    def test_staff_cannot_create_duplicate_variant_name_via_form(self):
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            f"/catalog/products/{self.product.pk}/variants/new/",
+            {
+                "name": "Enterprise Plus (+560)",  # already exists from setUp
+                "attribute_name": "Tier",
+                "attribute_value": "Plus",
+                "price_extra": "560.00",
+                "is_active": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "already exists for this product")
+
+    def test_staff_cannot_create_negative_effective_price_variant_via_form(self):
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            f"/catalog/products/{self.product.pk}/variants/new/",
+            {
+                "name": "Too Cheap",
+                "attribute_name": "Tier",
+                "attribute_value": "Low",
+                "price_extra": "-6000.00",
+                "is_active": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "cannot be negative")
 
     # ── Customer Management Views ─────────────────────────────────────────────
 

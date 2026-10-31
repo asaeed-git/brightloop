@@ -146,7 +146,7 @@ def variant_create(request, product_pk):
     product = get_object_or_404(Product, pk=product_pk)
 
     if request.method == "POST":
-        form = ProductVariantForm(request.POST)
+        form = ProductVariantForm(request.POST, product=product)
         if form.is_valid():
             variant = form.save(commit=False)
             variant.product = product
@@ -154,7 +154,7 @@ def variant_create(request, product_pk):
             messages.success(request, f"Variant '{variant.name}' added to {product.name}.")
             return redirect("catalog:product_detail", pk=product.pk)
     else:
-        form = ProductVariantForm()
+        form = ProductVariantForm(product=product)
 
     return render(
         request,
@@ -170,13 +170,13 @@ def variant_edit(request, pk):
     variant = get_object_or_404(ProductVariant.objects.select_related("product"), pk=pk)
 
     if request.method == "POST":
-        form = ProductVariantForm(request.POST, instance=variant)
+        form = ProductVariantForm(request.POST, instance=variant, product=variant.product)
         if form.is_valid():
             form.save()
             messages.success(request, f"Variant '{variant.name}' updated successfully.")
             return redirect("catalog:product_detail", pk=variant.product.pk)
     else:
-        form = ProductVariantForm(instance=variant)
+        form = ProductVariantForm(instance=variant, product=variant.product)
 
     return render(
         request,

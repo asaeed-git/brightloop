@@ -13,10 +13,12 @@ from django.core.cache import cache
 
 
 def _client_ip(request):
-    """Return the best-guess client IP; prefers X-Forwarded-For in hosted environments."""
-    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if xff:
-        return xff.split(",")[0].strip()
+    """
+    Return the client IP address.
+
+    Uses REMOTE_ADDR directly to prevent spoofed HTTP_X_FORWARDED_FOR headers
+    from bypassing rate limits when the app is directly accessed.
+    """
     return request.META.get("REMOTE_ADDR", "unknown")
 
 
