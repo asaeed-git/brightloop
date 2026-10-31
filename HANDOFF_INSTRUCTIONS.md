@@ -2,7 +2,11 @@
 
 ## 1. Project snapshot
 
-Milestone M0 and Feature Slices A1, A2, and A3 (Customers and Catalog) are implemented and locally verified. Brightloop is a subscription-management web app for the hackathon problem statement.
+Brightloop is a subscription-management web app for the hackathon problem statement.
+A1–A3 and B1 are implemented in a8df082; review found remaining A2/A3 defects (section 7).
+Developer 2 now adds the pure B2 calculator and UI integration corrections on
+arhan/pricing-calculator. Financial policy approval was explicitly reported by the user
+for both developers on October 31; implementation/consumer review is separate.
 
 Current stack: Python 3.14.4, Django 5.2.18, PostgreSQL 17.11, server-rendered HTML. Exact dependencies are pinned in requirements.txt. Syed's B1 shared UI (`arhan/shared-ui`) was merged into `main`. Abbas's A1 platform, A2 public authentication, and A3 catalog & customer views are implemented with 60 automated tests passing against PostgreSQL in ~0.7s.
 
@@ -12,11 +16,14 @@ Developer 1: Abbas Saeed — platform, authentication, catalog, plans, quotation
 Developer 2: Syed Arhan — shared UI, pricing/taxes/discounts, billing, invoices, payments, reporting.
 See WORK_DIVISION.md for full responsibilities and cross-module change rules.
 
-Current assistant merged Syed's B1 shared UI, implemented Abbas's A2 authentication scope and A3 catalog scope, and verified integration.
+Current assistant assists Syed. Abbas previously merged B1 and implemented A2/A3.
+This session reviewed that work, reproduced backend defects without changing those
+owned modules, and implemented the approved pure calculator and shared UI fixes.
 
 ## 3. Repository map
 
-Root: C:\Users\abbas\Desktop\brightloop.
+Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared. Abbas's prior path was
+C:\Users\abbas\Desktop\brightloop; local data/credentials are never shared.
 
 - AGENTS.md: entry point both agents should read.
 - README.md: setup, run, checks, configuration, limits.
@@ -40,6 +47,9 @@ Root: C:\Users\abbas\Desktop\brightloop.
 - .github/workflows/checks.yml: GitHub CI workflow.
 - docs/contracts/: platform.md (v0.3), shared-ui.md, financial-proposal.md.
 - docs/handoffs/: abbas.md and arhan.md: scoped continuation notes.
+- pricing/: exact pure calculation service and 18 tests; no registered Django app/models.
+- docs/contracts/pricing.md: callable input/output boundary and caller responsibilities.
+- docs/reviews/a2-a3-review.md: reproduced auth/catalog findings for Abbas.
 
 ## 4. Current status
 
@@ -55,9 +65,17 @@ Root: C:\Users\abbas\Desktop\brightloop.
 
 **Implemented but unverified elsewhere:** macOS/Linux helper path, Vercel/hosted setup.
 
-**In progress:** Next feature slice A4 (Plans & Quotation Templates).
+**Developer 2 verified on this machine:** incoming 60 tests passed (1.534s); final 81 tests
+passed (1.564s), including 18 new pricing tests and 3 additional UI regressions. The pricing
+allocation test includes 300 small-value combinations. Lint, format, dependency, system,
+migration-drift and static collection checks passed. Incoming catalog migration applied.
 
-**Unstarted:** Plans/templates/subscriptions (A4–A6), pricing/billing/payments/reports (B2–B6), scale/performance testing, deployment.
+**In progress:** Abbas's next A4 plans/quotations per his handoff; Syed's calculator is ready
+for code/consumer review, not yet integrated into quotation or invoice operations.
+
+**Unstarted:** Plans/templates/subscriptions (A4–A6); B2 tax/discount configuration,
+eligibility and transactional reservations; billing/invoices/payments/reports (B3–B6),
+scale/performance testing, deployment. The pure calculator is a B2 increment, not all B2.
 
 ## 5. Technical contracts and decisions
 
@@ -78,13 +96,18 @@ See FOUNDATION.md, docs/contracts/platform.md, docs/contracts/shared-ui.md, and 
 
 ## 7. Open issues and risks
 
-- Financial domain decisions in `docs/contracts/financial-proposal.md` require joint agreement with Syed before implementing billing/invoice logic.
+- The user reported joint approval of financial-proposal.md as written. See FOUNDATION.md.
+  Schema/API integrations and lifecycle locking still need coordinated implementation.
+- Review reproduced forwarded-header throttle bypass, duplicate-variant IntegrityError,
+  and accepted negative effective variant pricing. Abbas owns fixes; see the review file.
+  Existing passing tests do not mean these defects are resolved.
 - Local email backend uses filebased or locmem backend for development/testing; real email delivery requires SMTP credentials in production.
 
 ## 8. Next actions
 
-1. Commit and push A3 catalog changes to `origin/main`.
-2. Begin A4 (Plans & Quotation Templates):
+1. Review Syed's calculator contract/code and the A2/A3 findings. A3 is already on origin/main
+   at a8df082; preserve it. This Developer 2 branch is currently uncommitted/unpushed.
+2. Abbas continues A4 (Plans & Quotation Templates), consuming pricing.services:
    - Model `Plan`: billing intervals (Daily, Weekly, Monthly, Yearly), price, minimum quantity, availability dates, lifecycle flags.
    - Model `QuotationTemplate` and `QuotationTemplateLine`.
    - Forms and responsive views for Plans and Templates.
@@ -101,4 +124,8 @@ See FOUNDATION.md, docs/contracts/platform.md, docs/contracts/shared-ui.md, and 
 
 ## 10. Handoff checkpoint
 
-October 31, 2026. Branch: main. All 60 tests passing against PostgreSQL. Working tree clean after committing A3.
+October 31, 2026. Branch: arhan/pricing-calculator, based on origin/main a8df082.
+Changes are uncommitted and unpushed. Final integrated suite: 81 tests passed with PostgreSQL
+available; pure pricing/UI tests do not access the database. Temporary reproduction tests
+confirmed three defects separately. See docs/handoffs/arhan.md for local verification and
+process status. No remote CI result for this increment, no merge, no production readiness claim.

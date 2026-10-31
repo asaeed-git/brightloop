@@ -1,7 +1,11 @@
 # Financial contract proposal v0.1
 
-Owner/proposer: Syed Arhan. Status: FOR JOINT REVIEW, no approvals recorded.
-Based on FOUNDATION.md candidate 0.1; this is not an implemented API or final schema.
+Owner/proposer: Syed Arhan. Policy approved as written: on October 31, 2026, the user
+explicitly reported that both developers approved this document, including discount
+allocation and final-period charging. This is a record of that report, not a fabricated
+direct approval message from Abbas. The proposal text below is retained as the approved
+policy rationale. Its pure arithmetic boundary is now implemented in pricing/services.py;
+see pricing.md. Proposed database operations and API/schema work are not implemented.
 Consumers: Abbas's quotation/subscription services and Syed's billing/payment/reporting.
 
 ## Proposed calculator boundary
