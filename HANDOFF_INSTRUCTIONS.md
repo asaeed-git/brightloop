@@ -30,7 +30,7 @@ Root: C:\Users\abbas\Desktop\brightloop.
 - templates/core/home.html: honest, minimal starter screen.
 - scripts/local_postgres.py: isolated local database init/start/stop/status/check.
 - requirements.in / requirements.txt / pyproject.toml / .python-version: dependency and check baseline.
-- .github/workflows/checks.yml: proposed GitHub CI, not run remotely.
+- .github/workflows/checks.yml: GitHub CI verified successful in run 41167416285.
 - docs/contracts/platform.md: implemented identity/routes plus future JSON conventions.
 - docs/handoffs/abbas.md and arhan.md: scoped continuation notes.
 - Ignored .local/: private local database, credentials, future captured email.
@@ -50,7 +50,7 @@ Root: C:\Users\abbas\Desktop\brightloop.
 - 18 PostgreSQL-backed tests pass, including database constraint bypass attempts, auth/role checks, admin forms/pages, CSRF, health failure, and anonymous login regression.
 - Ruff lint/format, pip dependency check, Django system check, migration drift check, production-mode configuration check, and static collection pass.
 
-**Implemented but unverified elsewhere:** CI execution, Arhan's setup, macOS/Linux helper path, Vercel/hosted setup. No browser visual inspection was performed; HTTP/template behavior was checked.
+**Implemented but unverified elsewhere:** Arhan's setup, macOS/Linux helper path, Vercel/hosted setup. No browser visual inspection was performed; HTTP/template behavior was checked.
 
 **In progress:** no active feature editing at this checkpoint. Candidate baseline awaits team review.
 
@@ -76,7 +76,7 @@ Vercel is a possible deployment target discussed with the user. No hosting chang
 
 ## 7. Open issues and risks
 
-- CI failure diagnosed in run 41167116572: ubuntu-latest resolved to Ubuntu 26.04, where setup-python cannot supply pinned Python 3.14.4. Application checks were skipped. Fix in progress: pin runner to ubuntu-24.04, verified supported by actions/python-versions manifest. Await the new remote run before claiming CI passes. No application or dependency versions changed.
+- CI failure diagnosed in run 41167116572: ubuntu-latest resolved to Ubuntu 26.04, where setup-python cannot supply pinned Python 3.14.4. Application checks were skipped. Fixed in commit 3af341c by pinning ubuntu-24.04. Run 41167416285 completed successfully with all steps passing: https://github.com/asaeed-git/brightloop/actions/runs/41167416285. No application or dependency versions changed.
 
 - Initial source baseline 29149d1 is published. Syed must clone and review it, including any subsequent documentation commits, before parallel feature implementation.
 - Syed's approval and local run are pending. Shared UI is unstarted; full M0 acceptance is not claimed.
@@ -117,7 +117,7 @@ Run createsuperuser only when you need a new private administrator. Open /admin/
 .\.venv\Scripts\python.exe manage.py collectstatic --noinput
 ```
 
-Last results: all above passed; 18 tests passed in the final test run. Production-mode check also passed with DJANGO_DEBUG=false and check --deploy --fail-level WARNING; this checks configuration only, not actual HTTPS hosting. 127 static assets collected. Database restart/connectivity and migrate --check passed. Test/health HTTP checks passed. Browser visual QA, hosted CI, actual SMTP delivery, and business workflows remain untested/unimplemented.
+Last results: all above passed; 18 tests passed in the final test run. Production-mode check also passed with DJANGO_DEBUG=false and check --deploy --fail-level WARNING; this checks configuration only, not actual HTTPS hosting. 127 static assets collected. Database restart/connectivity and migrate --check passed. Test/health HTTP checks passed. Browser visual QA, actual SMTP delivery, and business workflows remain untested/unimplemented.
 
 Required configuration names: DJANGO_SECRET_KEY, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD.
 Other names: DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS, POSTGRES_HOST,
@@ -126,4 +126,4 @@ EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS, DEFAULT_FROM_EMAIL. Values 
 
 ## 10. Handoff checkpoint
 
-October 31, 2026 (Asia/Calcutta), after successful initial commit/push 29149d1 on main. The current documentation follow-up records publication; use git status and git log -1 for its final commit. Remote CI has not been checked. .env, .local, .venv, tmp, staticfiles are ignored; ignore behavior and private-credential exclusion were checked. Development web server was stopped after HTTP verification. The local PostgreSQL database is running on 127.0.0.1:55432; use scripts/local_postgres.py stop when finished. Do not assume a previous agent's process or settings remain unchanged; inspect before continuing.
+October 31, 2026 (Asia/Calcutta), after successful initial commit/push 29149d1 on main. The current documentation follow-up records publication; use git status and git log -1 for its final commit. Remote CI verified: run 41167416285 passed all steps on source commit 3af341c; this follow-up updates documentation only. .env, .local, .venv, tmp, staticfiles are ignored; ignore behavior and private-credential exclusion were checked. Development web server was stopped after HTTP verification. The local PostgreSQL database is running on 127.0.0.1:55432; use scripts/local_postgres.py stop when finished. Do not assume a previous agent's process or settings remain unchanged; inspect before continuing.
