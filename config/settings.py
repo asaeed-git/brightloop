@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts",
     "core",
+    "catalog",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

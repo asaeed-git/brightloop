@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow"><a href="{% url 'catalog:product_list' %}">← Products</a></p>
+      <h1>{{ product.name }}</h1>
+      <p class="muted">
+        <span class="badge">{{ product.product_type }}</span>
+        {% if product.is_active %}
+          <span class="badge badge--success">Active</span>
+        {% else %}
+          <span class="badge badge--warning">Inactive</span>
+        {% endif %}
+      </p>
+    </div>
+    {% if is_staff %}
+      <div style="display:flex;gap:8px">
+        <a href="{% url 'catalog:product_edit' pk=product.id %}" class="button">Edit Product</a>
+        <a href="{% url 'catalog:variant_create' product_pk=product.id %}" class="button button--primary">+ Add Variant</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:24px;margin-bottom:32px">
+    <div class="panel">
+      <h2>Pricing</h2>
+      <p style="font-size:24px;font-weight:700;margin:12px 0 6px">₹{{ product.sales_price }}</p>
+      <p class="muted" style="font-size:13px">Base sales price per unit</p>
+      {% if is_staff %}
+        <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:16px">
+          <p class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:700">Internal Cost (Confidential)</p>
+          <p style="font-size:16px;font-weight:600;margin-top:4px">₹{{ product.cost_price }}</p>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if product.notes %}
+      <div class="panel">
+        <h2>Notes & Description</h2>
+        <p class="muted" style="margin-top:8px;white-space:pre-line">{{ product.notes }}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="page-heading" style="margin-top:36px;display:flex;justify-content:space-between;align-items:center">
+    <h2>Available Variants</h2>
+    {% if is_staff %}
+      <a href="{% url 'catalog:variant_create' product_pk=product.id %}" class="button" style="min-height:32px;padding:4px 12px;font-size:13px">+ Add Variant</a>
+    {% endif %}
+  </div>
+
+  {% if product.variants %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Product Variants">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Variant Name</th>
+            <th scope="col">Attribute</th>
+            <th scope="col" class="amount">Adjustment</th>
+            <th scope="col" class="amount">Effective Price</th>
+            <th scope="col">Status</th>
+            {% if is_staff %}<th scope="col">Action</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for variant in product.variants %}
+            <tr>
+              <td><strong>{{ variant.name }}</strong></td>
+              <td>
+                {% if variant.attribute_name %}
+                  <span class="muted">{{ variant.attribute_name }}:</span> {{ variant.attribute_value }}
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td class="amount">
+                {% if variant.price_extra > 0 %}
+                  <span style="color:var(--accent)">+₹{{ variant.price_extra }}</span>
+                {% elif variant.price_extra < 0 %}
+                  <span style="color:var(--error)">-₹{{ variant.price_extra }}</span>
+                {% else %}
+                  <span class="muted">₹0.00</span>
+                {% endif %}
+              </td>
+              <td class="amount"><strong>₹{{ variant.effective_sales_price }}</strong></td>
+              <td>
+                {% if variant.is_active %}
+                  <span class="badge badge--success">Active</span>
+                {% else %}
+                  <span class="badge badge--warning">Inactive</span>
+                {% endif %}
+              </td>
+              {% if is_staff %}
+                <td>
+                  <a href="{% url 'catalog:variant_edit' pk=variant.id %}" class="button" style="min-height:28px;padding:2px 8px;font-size:12px">Edit</a>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No variants configured" empty_description="This product currently has no priced variants. Standard base pricing applies." %}
+  {% endif %}
+{% endblock %}

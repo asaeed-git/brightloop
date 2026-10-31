@@ -1,4 +1,4 @@
-# Platform contract v0.2 (implemented)
+# Platform contract v0.3 (implemented)
 
 ## Routes
 
@@ -14,6 +14,14 @@
 | /accounts/password-reset/sent/ | GET | Confirmation page after password reset request |
 | /accounts/reset/<uidb64>/<token>/ | GET, POST | Password reset confirm; validates token, sets new password |
 | /accounts/reset/complete/ | GET | Password reset completion confirmation |
+| /catalog/products/ | GET | Product list; public/customer sees active products; staff/admin sees all + cost prices |
+| /catalog/products/new/ | GET, POST | Create product; ADMIN and STAFF only |
+| /catalog/products/<uuid:pk>/ | GET | Product detail with variants; cost price excluded for customers |
+| /catalog/products/<uuid:pk>/edit/ | GET, POST | Edit product; ADMIN and STAFF only |
+| /catalog/products/<uuid:product_pk>/variants/new/ | GET, POST | Create product variant; ADMIN and STAFF only |
+| /catalog/variants/<uuid:pk>/edit/ | GET, POST | Edit product variant; ADMIN and STAFF only |
+| /catalog/customers/ | GET | Customer list; ADMIN and STAFF only |
+| /catalog/customers/<uuid:pk>/ | GET | Customer detail; ADMIN and STAFF only |
 
 Other methods return 405. All POSTs require CSRF protection.
 
@@ -28,12 +36,9 @@ Use `require_roles(request.user, ...)` for actions. Customer record queries use
 This helper permits staff/admin rows but does not decide whether a particular action is allowed.
 Each caller still applies its operation's role check. Inactive/anonymous/unknown-role users are rejected.
 
-## Proposed future JSON convention (not implemented)
+## Catalog and Confidentiality Contract
 
-Same-origin endpoints under /api/v1/ if JSON is needed; session cookies and CSRF remain authoritative.
-Use UUID strings; Decimal money strings; ISO-8601 UTC instants and YYYY-MM-DD date-only values.
-Lists use page/page_size (default 25, max 100), returning items/page/page_size/total. Errors use
-`{"error":{"code":"validation_error","message":"...","fields":{}}}`. Use 400 invalid input,
-401 unauthenticated, 403 forbidden action, 404 inaccessible/missing record, 409 state conflict.
-HTML forms use Django form errors and conventional redirects. Freeze actual endpoint contracts
-with both owners before adding consumers; these conventions do not create promised routes.
+- Products have `name`, `product_type`, `sales_price`, `cost_price`, `notes`, and `is_active`.
+- `cost_price` is strictly confidential to ADMIN and STAFF. View context and templates for CUSTOMER and anonymous users MUST NEVER include `cost_price`.
+- Product variants belong to a product and have `price_extra` adjustments (e.g. +560.00). `effective_sales_price` is computed as `product.sales_price + variant.price_extra`.
+- Negative prices are rejected at both database constraint and form validation layers.

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Customers · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <p class="eyebrow">Customers</p>
+    <h1>Customer Accounts</h1>
+    <p class="muted">Registered customer accounts and their subscriptions.</p>
+  </div>
+
+  {% if customers %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Customers Table">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Email</th>
+            <th scope="col">Name</th>
+            <th scope="col">Role</th>
+            <th scope="col">Joined</th>
+            <th scope="col">Status</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for customer in customers %}
+            <tr>
+              <td><strong><a href="{% url 'catalog:customer_detail' pk=customer.pk %}">{{ customer.email }}</a></strong></td>
+              <td>
+                {% if customer.first_name or customer.last_name %}
+                  {{ customer.first_name }} {{ customer.last_name }}
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td><span class="badge">{{ customer.get_role_display }}</span></td>
+              <td class="muted">{{ customer.date_joined|date:"M d, Y" }}</td>
+              <td>
+                {% if customer.is_active %}
+                  <span class="badge badge--success">Active</span>
+                {% else %}
+                  <span class="badge badge--error">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'catalog:customer_detail' pk=customer.pk %}" class="button" style="min-height:30px;padding:4px 10px;font-size:12px">View</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No customers yet" empty_description="No registered customers found." %}
+  {% endif %}
+{% endblock %}

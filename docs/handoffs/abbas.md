@@ -1,24 +1,28 @@
-# Abbas: A2 Authentication and Access Checkpoint
+# Abbas: A3 Customers and Catalog Checkpoint
 
-Scope: A1 platform foundation and A2 public authentication / identity.
-Status: A1 complete; B1 shared UI merged from `arhan/shared-ui`; A2 implemented and verified.
+Scope: A1 platform foundation, A2 public authentication, and A3 customers and catalog.
+Status: A1, A2, and A3 implemented and verified; 60 tests pass.
 
 ## Completed and verified
 
-1. **Integrated B1 UI**: Merged `arhan/shared-ui` into `main`. Base shell, design system (`app.css`), components (`form_fields.html`, `empty_state.html`), and responsive layouts integrated.
+1. **A1 & B1 Integration**: Merged Syed's `arhan/shared-ui` into `main`. Base shell, design system (`app.css`), components, and responsive layouts integrated.
 2. **A2 Public Authentication**:
-   - `accounts/forms.py`: `SignupForm`, `BrightloopAuthenticationForm`, `BrightloopPasswordResetForm`, `BrightloopSetPasswordForm`.
-   - `accounts/views.py` & `accounts/urls.py`: Signup, Login, Logout, Password Reset, Password Reset Confirm.
-   - Password rules enforced: ≥9 chars, uppercase, lowercase, special character, no digit required.
-   - Role enforcement: Public signup unconditionally sets `role=CUSTOMER`.
-   - Email normalization: Canonical lowercase with case-insensitive unique matching.
-   - Throttling (`accounts/throttle.py`): Cache-backed rate limiting on login (10/5m) and password reset (5/10m).
-   - Email templates: Reset emails generated via `accounts/emails/password_reset.txt`.
-   - Test suite: 46 automated tests passing in ~0.5s against local PostgreSQL.
+   - `accounts/forms.py`, `accounts/views.py`, `accounts/urls.py`, `accounts/throttle.py`.
+   - Signup, Login, Logout, Password reset with token email link.
+   - Enforced password rules (>=9 chars, uppercase, lowercase, special character, no digit required).
+   - Public signup unconditionally sets `role=CUSTOMER`.
+   - Rate limiting on login and password reset.
+3. **A3 Customers & Catalog**:
+   - `catalog/models.py`: `Product` and `ProductVariant` models with UUID keys, decimal prices, and non-negative database check constraints.
+   - Verified the specification requirement for priced variants (e.g. +560.00 variant price adjustment).
+   - `catalog/views.py`: Product list, product detail, product create/edit, variant create/edit, customer list, customer detail.
+   - **Cost price confidentiality**: Server-side guaranteed omission of `cost_price` in context and HTML when viewed by customers or unauthenticated visitors.
+   - Role enforcement: Product and variant creation/modification and customer directory are restricted to `ADMIN` and `STAFF`.
+   - Navigation updated in `templates/base.html` with role-aware Products and Customers links.
+   - 60 automated tests pass against local PostgreSQL in ~0.7s.
 
-## Next Target: A3 Customer & Catalog
+## Next Target: A4 Plans and Quotations
 
-- Model `Customer` profile / extension if needed, or link customer details.
-- Products: name, type, sales price, cost price, notes.
-- Product Variants: variant attributes with price adjustments (including the +560 test case from spec).
-- Server-side permissions: ensure cost price is hidden from customers.
+- Model `Plan`: billing intervals (Daily, Weekly, Monthly, Yearly), base plan price, minimum quantity, availability date range, lifecycle policy flags (auto-close, early close, pause, renewal).
+- Model `QuotationTemplate` & lines: plan, validity in days, product lines with default quantities.
+- Staff/Admin forms and views for Plans and Quotation Templates.

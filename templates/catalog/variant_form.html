@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <p class="eyebrow"><a href="{% url 'catalog:product_detail' pk=product.pk %}">← {{ product.name }}</a></p>
+    <h1>{{ title }}</h1>
+    <p class="muted">Base Product: <strong>{{ product.name }}</strong> (Base Price: ₹{{ product.sales_price }})</p>
+  </div>
+
+  <div class="panel" style="max-width:640px">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'components/form_fields.html' with form=form %}
+      <div style="display:flex;gap:12px;margin-top:16px">
+        <button type="submit" class="button button--primary">Save Variant</button>
+        <a href="{% url 'catalog:product_detail' pk=product.pk %}" class="button">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

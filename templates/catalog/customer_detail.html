@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Customer {{ customer.email }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <p class="eyebrow"><a href="{% url 'catalog:customer_list' %}">← Customers</a></p>
+    <h1>{{ customer.email }}</h1>
+    <p class="muted">
+      <span class="badge">{{ customer.get_role_display }}</span>
+      {% if customer.is_active %}
+        <span class="badge badge--success">Active</span>
+      {% else %}
+        <span class="badge badge--error">Inactive</span>
+      {% endif %}
+    </p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:24px;margin-bottom:32px">
+    <div class="panel">
+      <h2>Account Information</h2>
+      <dl style="display:grid;grid-template-columns:120px 1fr;gap:12px;margin-top:16px;font-size:14px">
+        <dt class="muted">User ID:</dt>
+        <dd style="font-family:monospace;font-size:12px">{{ customer.pk }}</dd>
+        <dt class="muted">Email:</dt>
+        <dd><strong>{{ customer.email }}</strong></dd>
+        <dt class="muted">Full Name:</dt>
+        <dd>
+          {% if customer.first_name or customer.last_name %}
+            {{ customer.first_name }} {{ customer.last_name }}
+          {% else %}
+            <span class="muted">Not provided</span>
+          {% endif %}
+        </dd>
+        <dt class="muted">Joined:</dt>
+        <dd>{{ customer.date_joined|date:"F d, Y H:i" }}</dd>
+        <dt class="muted">Last Login:</dt>
+        <dd>
+          {% if customer.last_login %}
+            {{ customer.last_login|date:"F d, Y H:i" }}
+          {% else %}
+            <span class="muted">Never</span>
+          {% endif %}
+        </dd>
+      </dl>
+    </div>
+
+    <div class="panel">
+      <h2>Subscriptions</h2>
+      <p class="muted" style="margin-top:8px">No active subscriptions on record.</p>
+    </div>
+  </div>
+{% endblock %}
