@@ -4,7 +4,10 @@
 
 Abbas explicitly selected **Django + PostgreSQL** in the October 31, 2026 conversation and
 authorized development. This file records the initial implementation and proposed domain
-contracts for review. Syed Arhan's approval and a successful run on his machine are **pending**.
+contracts for review. Syed's local setup was verified on October 31, 2026 (see his scoped
+handoff). In the same day's Developer 2 session, the user explicitly reported that both
+developers approved docs/contracts/financial-proposal.md as written. This records the
+user's report of joint approval; it does not attribute a separate message to Abbas.
 The initial source baseline is commit `29149d1`, published to origin/main for team review.
 Publishing this candidate does not mean the full M0 gate has passed.
 
@@ -41,8 +44,9 @@ used for development and tests as well as planned hosting so concurrency tests a
 | core/ | Abbas | Home/readiness endpoints |
 | templates/core/home.html | Syed | Implemented workspace welcome screen |
 | templates/base.html, core/static/ | Syed | Implemented shared UI shell & design system |
-| catalog/, plans/, subscriptions/ | Abbas | Planned modules |
-| pricing/, billing/, payments/, reporting/ | Syed | Planned modules |
+| catalog/, plans/, subscriptions/ | Abbas | Catalog implemented; plans/subscriptions pending |
+| pricing/ | Syed | Pure calculator implemented on arhan/pricing-calculator; review pending |
+| billing/, payments/, reporting/ | Syed | Planned modules |
 | docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.2, shared-ui, financial proposal |
 
 Keep views thin, validation in forms or explicit input validators, business operations in
@@ -70,9 +74,12 @@ other developer's duty to enforce permissions, write relevant tests, and explain
   One login represents one customer account initially; multi-user organizations are not implemented.
 - `is_active=False` blocks authentication and shared authorization helpers.
 
-## Proposed domain decisions: review before implementation
+## Domain policy and implementation state
 
-These are concrete defaults for both developers to review, not organizer mandates or implemented features.
+Financial proposal v0.1 was approved as written according to the user's report above.
+Its exact allocation and final-period rules supersede the previously open entries below.
+These are application policies, not organizer mandates. Approval is not implementation;
+only the pure calculator is added in this branch, with its boundary in docs/contracts/pricing.md.
 
 | Topic | Candidate default |
 | --- | --- |
@@ -87,16 +94,18 @@ These are concrete defaults for both developers to review, not organizer mandate
 | Billing periods | Start-inclusive/end-exclusive; upfront billing; preserve calendar anchor, clamp invalid month days |
 | Lifecycle | DRAFT → QUOTATION → CONFIRMED → ACTIVE → CLOSED; separate pause fields |
 | Changes | Pause/add-on changes/early close effective at next boundary; no proration initially |
-| Expiry | No new period starts at/after expiry; define shortened final-period charging before worker implementation |
+| Expiry | No period starts at/after expiry; last service period clips to expiry but charges full normal price, disclosed in quotations |
 | Renewal | Explicit authorized renewal; plan auto-close ends on expiry; no implied automatic extension |
 | Invoices | DRAFT → CONFIRMED → PAID; CANCELLED outcome; partially paid stays CONFIRMED |
 | Billing safety | Unique subscription+period, transactional usage/creation/schedule updates, retries safe |
 | Payments | Positive invoice-linked payments; unique request key; reject overpayment; no paid-invoice cancellation without reversal policy |
 | Reports | Separate invoiced sales excluding tax, collected cash, outstanding, overdue; active count excludes pauses |
 
-The shortened-final-period policy and discount allocation algorithm remain open. Syed owns proposing
-the exact pricing function and worked examples; Abbas reviews their quote/subscription effects. No
-domain tables or financial operations have been implemented on these unconfirmed assumptions.
+Fixed discount allocation uses largest remainder in cents, ties by stable charge ID;
+percentage discounts and tax use per-line half-up rounding. See financial-proposal.md
+for approved examples and pricing.md for the implemented calculator. Tax/discount
+configuration tables, eligibility/reservation, billing/invoices/payments remain unimplemented.
+Shared schemas, API consumers, and lifecycle locking still require coordinated implementation.
 
 ## Operations and deployment direction
 

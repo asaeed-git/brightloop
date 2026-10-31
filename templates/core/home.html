@@ -15,10 +15,10 @@
         {% if user.role == 'ADMIN' and user.is_staff %}
           <a class="button button--primary" href="{% url 'admin:index' %}">Open administration <span aria-hidden="true">↗</span></a>
         {% else %}
-          <p class="welcome-status">You’re signed in. Your workspace features will appear here as they become available.</p>
+          <a class="button button--primary" href="{% url 'catalog:product_list' %}">Browse products <span aria-hidden="true">↗</span></a>
         {% endif %}
       {% else %}
-        <a class="button button--primary" href="{% url 'admin:login' %}">Administrator sign in <span aria-hidden="true">↗</span></a>
+        <a class="button button--primary" href="{% url 'accounts:signup' %}">Create your account <span aria-hidden="true">↗</span></a>
       {% endif %}
     </div>
     <div class="loop-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-core">b<span>.</span></div><span class="orbit-point"></span></div>

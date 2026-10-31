@@ -9,10 +9,10 @@ from accounts.models import User
 
 
 class SharedUITests(SimpleTestCase):
-    def render_home(self, user):
-        request = RequestFactory().get("/")
+    def render_home(self, user, path="/"):
+        request = RequestFactory().get(path)
         request.user = user
-        request.resolver_match = resolve("/")
+        request.resolver_match = resolve(path)
         return render_to_string("core/home.html", request=request)
 
     def test_anonymous_shows_sign_in_and_sign_up_links_and_no_administration_menu(self):
@@ -23,6 +23,43 @@ class SharedUITests(SimpleTestCase):
         self.assertNotIn('href="/admin/"', html)
         self.assertIn('href="#main-content"', html)
         self.assertIsNotNone(finders.find("brightloop/app.css"))
+
+    def test_customer_navigation_requires_an_active_internal_user(self):
+        for role in User.Role.values:
+            for active in [True, False]:
+                with self.subTest(role=role, active=active):
+                    html = self.render_home(User(role=role, is_active=active))
+                    self.assertEqual(
+                        'href="/catalog/customers/"' in html,
+                        active and role in [User.Role.ADMIN, User.Role.STAFF],
+                    )
+
+    def test_variant_editor_keeps_products_navigation_active(self):
+        from html.parser import HTMLParser
+
+        class CurrentLinks(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.links = []
+
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == "a" and attrs.get("aria-current") == "page":
+                    self.links.append(attrs["href"])
+
+        parser = CurrentLinks()
+        parser.feed(
+            self.render_home(
+                User(role=User.Role.STAFF),
+                "/catalog/variants/00000000-0000-0000-0000-000000000001/edit/",
+            )
+        )
+        self.assertEqual(parser.links, ["/catalog/products/"])
+
+    def test_customer_home_links_to_implemented_catalog(self):
+        html = self.render_home(User(role=User.Role.CUSTOMER))
+        self.assertIn("Browse products", html)
+        self.assertNotIn("Administrator sign in", html)
 
     def test_only_active_admin_with_admin_access_sees_administration(self):
         for role, active, staff, expected in [

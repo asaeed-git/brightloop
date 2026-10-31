@@ -3,8 +3,11 @@
 A subscription-management web application being built by Abbas Saeed and Syed Arhan.
 The current foundation runs locally with Django and PostgreSQL. It provides an email-based
 user model, admin/staff/customer roles, Django administration, password validation,
-reusable authorization helpers, and database readiness checks. Customer signup/reset,
-catalog, subscriptions, billing, payments, and reports are not implemented yet.
+public signup/login/reset, reusable authorization helpers, catalog/customer views, and
+database readiness checks. A pure shared calculator handles approved tax/discount arithmetic;
+see docs/contracts/pricing.md. Subscription/quotation integration, tax/discount configuration,
+billing, invoices, payments, and reports remain unimplemented. Known authentication/catalog
+review findings are recorded in docs/reviews/a2-a3-review.md.
 
 ## Stack and prerequisites
 

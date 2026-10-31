@@ -1,5 +1,47 @@
 # Syed Arhan: incoming work
 
+## Current checkpoint: B2 calculator and A2/A3 review
+
+October 31, 2026. Branch arhan/pricing-calculator, based on origin/main a8df082.
+Abbas merged our prior UI in 8979d98, then added A2 auth and A3 catalog. The workspace
+was clean before creating this branch. No dependency changes or private files copied.
+
+The user explicitly answered that both developers approved financial-proposal.md as
+written, including discount allocation and final-period billing. Recorded that report
+in FOUNDATION.md and the proposal; no direct message from Abbas is fabricated.
+
+Implemented pricing/services.py: immutable Charge/Discount/LineTotal/PriceTotal values,
+exact integer-cent/Fraction calculations, per-line half-up percentage/tax rounding,
+stable proportional fixed-discount allocation, scope and validation guards. No database
+side effects, API routes, migrations or settings changes. Contract: docs/contracts/pricing.md.
+Caller services must still enforce dates/thresholds/usage, permissions and lifecycle rules.
+Quote/invoice consumers do not exist yet. This is the calculator increment of B2 only.
+
+Shared UI: fixed Customers link role precedence, variant editor active navigation,
+anonymous signup/customer catalog landing actions, and narrow topbar account wrapping.
+Backend findings in docs/reviews/a2-a3-review.md remain assigned to Abbas: forwarded-header
+throttle bypass, duplicate variant submissions raising IntegrityError, negative effective
+prices. Isolated tests reproduced all three; this branch does not alter auth/catalog logic.
+
+Verification actually run:
+- Applied catalog.0001_initial to the private local PostgreSQL cluster.
+- Incoming suite: 60 tests passed, 1.534s.
+- Three temporary defect reproductions passed, 0.156s (confirm defects, not correctness).
+- Focused calculator/UI suite: 26 tests passed, 0.090s.
+- Final suite: 81 tests passed, 1.564s. Eighteen pricing tests include 300 allocation cases.
+- Ruff lint/format, pip check, Django system/migration checks and static collection passed.
+- Browser: public signup, sign-in and empty catalog routes open; signup/sign-in at 320px
+  have no horizontal page overflow. Full authenticated business workflows and scale timings
+  were not browser-tested. Automated incoming auth/catalog tests ran in the final suite.
+
+New files: pricing/{__init__,services,tests}.py, docs/contracts/pricing.md,
+docs/reviews/a2-a3-review.md. Existing UI, financial docs, README and handoff updated.
+No commit or push yet. Use the project .venv Python 3.14.4, not system Python 3.15.
+Next: review/integrate the calculator with Abbas's forthcoming quote consumer, coordinate
+tax/discount persistence and reservations, and fix the recorded backend issues through Abbas.
+
+## Previous B1 checkpoint (historical)
+
 ## Active local checkpoint — October 31, 2026
 
 Cloned origin/main at 3b88994 into C:\Users\LENOVO\Desktop\brightloop\shared;

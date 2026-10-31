@@ -35,6 +35,9 @@ button, input, select, textarea { font: inherit; }
 .workspace { min-width: 0; display: flex; flex-direction: column; }
 .topbar { min-height: 88px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 16px 44px; gap: 16px; background: var(--surface); }
 .workspace-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.account-label { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.account-form { margin: 0; }
+.button--compact { padding: 8px 14px; font-size: 13px; }
 .main-content { width: 100%; max-width: 1320px; padding: 48px 44px; margin: 0 auto; flex: 1; }
 .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent); margin: 0 0 10px; }
 h1, h2, h3, p { overflow-wrap: anywhere; }
@@ -105,7 +108,7 @@ p { margin: 0 0 16px; }
   .nav-label, .sidebar-note { display: none; }
   .navigation { display: flex; flex-wrap: wrap; margin-top: 18px; gap: 6px; }
   .navigation a { padding: 8px 12px; }
-  .topbar { min-height: 64px; padding: 12px 20px; }
+  .topbar { min-height: 64px; padding: 12px 20px; flex-wrap: wrap; }
   .main-content { padding: 32px 20px; }
   .welcome-panel { grid-template-columns: 1fr; padding: 28px 24px; }
   .loop-art { display: none; }
