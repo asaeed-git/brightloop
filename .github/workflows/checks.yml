@@ -1,0 +1,43 @@
+name: Foundation checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_DB: brightloop
+          POSTGRES_USER: brightloop
+          # Disposable CI service credentials, not application credentials.
+          POSTGRES_PASSWORD: ci-only-temporary-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U brightloop"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: ci-only-not-for-deployment-012345678901234567890123456789
+      DJANGO_DEBUG: 'false'
+      POSTGRES_DB: brightloop
+      POSTGRES_USER: brightloop
+      POSTGRES_PASSWORD: ci-only-temporary-password
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: '5432'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.4'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pip check
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python manage.py check
+      - run: python manage.py check --deploy --fail-level WARNING
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py migrate --noinput
+      - run: python manage.py test --settings=config.test_settings
+      - run: python manage.py collectstatic --noinput
