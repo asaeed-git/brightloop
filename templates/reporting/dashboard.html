@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block title %}Financial & Operational Reports · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow">Financial Analytics & Operations</p>
+      <h1>Executive Reporting</h1>
+      <p class="muted">Reconciled real-time view of invoiced sales, cash collections, aging receivables, and subscription health.</p>
+    </div>
+    <div style="font-size:13px;color:var(--text-muted)">
+      As of <strong>{{ today|date:"d M Y" }}</strong>
+    </div>
+  </div>
+
+  <!-- Filter presets and custom date range -->
+  <div class="panel" style="margin-bottom:24px;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="muted" style="font-size:13px;font-weight:600">Period:</span>
+        <a href="?preset=7d" class="button {% if preset == '7d' %}button--primary{% endif %}" style="min-height:30px;padding:2px 12px;font-size:12px">Last 7 Days</a>
+        <a href="?preset=30d" class="button {% if preset == '30d' %}button--primary{% endif %}" style="min-height:30px;padding:2px 12px;font-size:12px">Last 30 Days</a>
+        <a href="?preset=month" class="button {% if preset == 'month' %}button--primary{% endif %}" style="min-height:30px;padding:2px 12px;font-size:12px">This Month</a>
+        <a href="?preset=all" class="button {% if preset == 'all' %}button--primary{% endif %}" style="min-height:30px;padding:2px 12px;font-size:12px">All Time</a>
+      </div>
+
+      <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0">
+        <input type="hidden" name="preset" value="custom">
+        <label for="start_date" style="font-size:12px" class="muted">From:</label>
+        <input type="date" name="start_date" id="start_date" value="{{ start_date|date:'Y-m-d' }}" style="padding:4px 8px;border-radius:4px;border:1px solid var(--line);font-size:12px">
+        <label for="end_date" style="font-size:12px" class="muted">To:</label>
+        <input type="date" name="end_date" id="end_date" value="{{ end_date|date:'Y-m-d' }}" style="padding:4px 8px;border-radius:4px;border:1px solid var(--line);font-size:12px">
+        <button type="submit" class="button" style="min-height:30px;padding:2px 12px;font-size:12px">Apply</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Primary Financial KPI Cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-bottom:24px">
+    <div class="panel" style="padding:20px">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Invoiced Net Sales</span>
+      <div class="amount" style="font-size:24px;font-weight:800;color:var(--text);margin-top:6px">₹{{ metrics.invoiced_net_sales }}</div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">
+        Gross: ₹{{ metrics.invoiced_gross_sales }} · Tax: ₹{{ metrics.invoiced_tax_total }}<br>
+        <strong>{{ metrics.invoices_issued_count }}</strong> invoice(s) issued
+      </p>
+    </div>
+
+    <div class="panel" style="padding:20px">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Cash Collected</span>
+      <div class="amount" style="font-size:24px;font-weight:800;color:var(--accent);margin-top:6px">₹{{ metrics.collected_cash }}</div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">
+        Across <strong>{{ metrics.payments_count }}</strong> settled payment(s)
+      </p>
+    </div>
+
+    <div class="panel" style="padding:20px">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Outstanding Receivables</span>
+      <div class="amount" style="font-size:24px;font-weight:800;color:{% if metrics.outstanding_receivables > 0 %}var(--error){% else %}var(--accent){% endif %};margin-top:6px">₹{{ metrics.outstanding_receivables }}</div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">
+        <strong>{{ metrics.outstanding_count }}</strong> confirmed invoice(s) due
+      </p>
+    </div>
+
+    <div class="panel" style="padding:20px">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Overdue Receivables</span>
+      <div class="amount" style="font-size:24px;font-weight:800;color:{% if metrics.overdue_receivables > 0 %}var(--error){% else %}var(--accent){% endif %};margin-top:6px">₹{{ metrics.overdue_receivables }}</div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">
+        <strong>{{ metrics.overdue_count }}</strong> invoice(s) past due date
+      </p>
+    </div>
+
+    <div class="panel" style="padding:20px">
+      <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Active Subscriptions</span>
+      <div class="amount" style="font-size:24px;font-weight:800;color:var(--text);margin-top:6px">{{ metrics.active_paying_count }}</div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">
+        Excludes <strong>{{ metrics.paused_count }}</strong> paused<br>
+        Quotes: {{ metrics.quotation_count }} · Closed: {{ metrics.closed_count }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Plan Performance Distribution -->
+  <div class="panel" style="margin-bottom:24px">
+    <h2>Subscription Plans Performance</h2>
+    {% if metrics.plan_breakdown %}
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Plans Breakdown Table">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Plan Name</th>
+              <th scope="col">Billing Interval</th>
+              <th scope="col" class="amount">Base Price</th>
+              <th scope="col" style="text-align:center">Active Paying</th>
+              <th scope="col" style="text-align:center">Paused</th>
+              <th scope="col" style="text-align:center">Total Subs</th>
+              <th scope="col" class="amount">Invoiced Net Sales</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in metrics.plan_breakdown %}
+              <tr>
+                <td><strong><a href="{% url 'plans:plan_detail' pk=p.plan_id %}">{{ p.plan_name }}</a></strong></td>
+                <td>{{ p.billing_interval }}</td>
+                <td class="amount">₹{{ p.base_price }}</td>
+                <td style="text-align:center"><span class="badge badge--success">{{ p.active_subs }}</span></td>
+                <td style="text-align:center">{% if p.paused_subs > 0 %}<span class="badge badge--warning">{{ p.paused_subs }}</span>{% else %}<span class="muted">0</span>{% endif %}</td>
+                <td style="text-align:center"><strong>{{ p.total_subs }}</strong></td>
+                <td class="amount"><strong>₹{{ p.invoiced_net }}</strong></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No subscription plans configured yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Payment Channels & Collections -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:24px;margin-bottom:24px">
+    <div class="panel">
+      <h3>Cash Collections by Channel</h3>
+      {% if metrics.payment_method_breakdown %}
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Payment Methods Table">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Channel / Method</th>
+                <th scope="col" style="text-align:center">Transactions</th>
+                <th scope="col" class="amount">Total Settled</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in metrics.payment_method_breakdown %}
+                <tr>
+                  <td><span class="badge">{{ m.method_display }}</span></td>
+                  <td style="text-align:center">{{ m.count }}</td>
+                  <td class="amount"><strong>₹{{ m.total }}</strong></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted">No settled payments recorded for this period.</p>
+      {% endif %}
+    </div>
+
+    <!-- Invoice Status Summary -->
+    <div class="panel">
+      <h3>Invoice Lifecycle Statuses</h3>
+      <dl style="display:grid;grid-template-columns:1fr auto;gap:12px;font-size:14px;margin-top:16px">
+        <dt>Confirmed (Awaiting Settlement):</dt>
+        <dd><strong>{{ metrics.invoice_status_counts.CONFIRMED|default:"0" }}</strong></dd>
+
+        <dt>Paid (Fully Settled):</dt>
+        <dd><strong style="color:var(--accent)">{{ metrics.invoice_status_counts.PAID|default:"0" }}</strong></dd>
+
+        <dt>Draft Invoices:</dt>
+        <dd><strong>{{ metrics.invoice_status_counts.DRAFT|default:"0" }}</strong></dd>
+
+        <dt>Cancelled Invoices:</dt>
+        <dd><span class="muted">{{ metrics.invoice_status_counts.CANCELLED|default:"0" }}</span></dd>
+      </dl>
+      <div style="margin-top:20px;display:flex;gap:8px">
+        <a href="{% url 'billing:invoice_list' %}" class="button" style="font-size:13px">View All Invoices →</a>
+        <a href="{% url 'payments:payment_list' %}" class="button" style="font-size:13px">View All Payments →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity Drill-downs -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:24px">
+    <div class="panel">
+      <h3>Recent Invoices</h3>
+      {% if recent_invoices %}
+        <ul style="list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px">
+          {% for inv in recent_invoices %}
+            <li style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+              <div>
+                <strong><a href="{% url 'billing:invoice_detail' pk=inv.pk %}">{{ inv.number }}</a></strong>
+                <span class="muted" style="font-size:12px">({{ inv.customer.email }})</span>
+              </div>
+              <div style="text-align:right">
+                <span class="amount">₹{{ inv.total }}</span>
+                {% if inv.status == 'PAID' %}<span class="badge badge--success" style="font-size:11px">Paid</span>{% else %}<span class="badge badge--accent" style="font-size:11px">Due</span>{% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No invoices recorded yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h3>Recent Payments</h3>
+      {% if recent_payments %}
+        <ul style="list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px">
+          {% for p in recent_payments %}
+            <li style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+              <div>
+                <strong>₹{{ p.amount }}</strong>
+                <span class="muted" style="font-size:12px">via {{ p.get_method_display }}</span>
+                <br><small class="muted"><a href="{% url 'billing:invoice_detail' pk=p.invoice.pk %}">{{ p.invoice.number }}</a></small>
+              </div>
+              <div style="text-align:right">
+                <span style="font-size:12px" class="muted">{{ p.paid_at|date:"d M, H:i" }}</span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No payments recorded yet.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

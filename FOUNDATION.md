@@ -47,8 +47,8 @@ used for development and tests as well as planned hosting so concurrency tests a
 | catalog/, plans/, subscriptions/ | Abbas | Catalog, Plans, Subscriptions lifecycle, and Customer Experience (A1–A6) implemented |
 | pricing/ | Syed | Pure calculator implemented and integrated into template & subscription previews |
 | billing/ | Syed | TaxRate, DiscountRule, Invoice models, immutable lines, and recurring billing engine implemented |
-| payments/ | Syed | Payment model, positive amount constraint, idempotency, row-locking settlement service, views, tests implemented (B5); 184 tests passing |
-| reporting/ | Syed | Planned module (B6) |
+| payments/ | Syed | Payment model, positive amount constraint, idempotency, row-locking settlement service, views, tests implemented (B5) |
+| reporting/ | Syed | Executive reporting dashboard, financial metric reconciliation, scale seeding, benchmark tooling implemented (B6); 192 tests passing |
 | docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.5, shared-ui, financial proposal, pricing v0.1 |
 
 Keep views thin, validation in forms or explicit input validators, business operations in
@@ -83,7 +83,8 @@ Its exact allocation and final-period rules supersede the previously open entrie
 These are application policies, not organizer mandates. Approval is not implementation;
 the pure calculator is added in pricing/services.py, tax/discount configuration tables
 and management views are added in billing/, Invoice snapshots and recurring billing engine
-are implemented in billing/, and transactional payment settlement with idempotency is implemented in payments/.
+are implemented in billing/, transactional payment settlement with idempotency is implemented in payments/,
+and executive financial reporting with performance benchmarking is implemented in reporting/.
 
 | Topic | Candidate default |
 | --- | --- |
@@ -108,7 +109,8 @@ are implemented in billing/, and transactional payment settlement with idempoten
 Fixed discount allocation uses largest remainder in cents, ties by stable charge ID;
 percentage discounts and tax use per-line half-up rounding. See financial-proposal.md
 for approved examples, pricing.md for the implemented calculator, billing/ for configuration
-models, invoices, and recurring billing runner, and payments/ for transactional payment settlement.
+models, invoices, and recurring billing runner, payments/ for transactional payment settlement,
+and reporting/ for executive reporting analytics and performance benchmarking.
 
 ## Operations and deployment direction
 

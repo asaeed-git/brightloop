@@ -51,6 +51,7 @@ class SharedUITests(SimpleTestCase):
                     self.assertEqual('href="/billing/invoices/"' in html, expected_internal)
                     self.assertEqual('href="/payments/"' in html, expected_internal)
                     self.assertEqual('href="/billing/runs/"' in html, expected_internal)
+                    self.assertEqual('href="/reporting/"' in html, expected_internal)
                     self.assertEqual('href="/billing/taxes/"' in html, expected_internal)
                     self.assertEqual('href="/billing/discounts/"' in html, expected_internal)
                     self.assertEqual('href="/billing/my-invoices/"' in html, expected_customer)

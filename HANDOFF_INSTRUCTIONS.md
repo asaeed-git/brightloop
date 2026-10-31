@@ -3,15 +3,15 @@
 ## 1. Project snapshot
 
 Brightloop is a subscription-management web app for the hackathon problem statement.
-Milestones A1–A6 (Abbas) and B1–B5 (Syed) are implemented and verified.
-184 automated tests pass against local PostgreSQL in ~8.1s.
+Milestones A1–A6 (Abbas) and B1–B6 (Syed) are fully implemented and verified locally.
+192 automated tests pass against local PostgreSQL in ~8.9s.
 
 Current stack: Python 3.14.4, Django 5.2.18, PostgreSQL 17.11, server-rendered HTML. Exact dependencies are pinned in requirements.txt.
 
 ## 2. Ownership and scope
 
 Developer 1: Abbas Saeed — platform, authentication, catalog, plans, quotations, subscription lifecycle, customer subscription experience (A1–A6).
-Developer 2: Syed Arhan — shared UI, pricing/taxes/discounts, billing, invoices, payments, reporting (B1–B6).
+Developer 2: Syed Arhan — shared UI, pricing/taxes/discounts, billing, invoices, payments, reporting & performance (B1–B6).
 See WORK_DIVISION.md for full responsibilities and cross-module change rules.
 
 ## 3. Repository map
@@ -26,9 +26,10 @@ Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
 - pricing/: exact pure calculation service and 18 tests; immutable Charge/Discount/LineTotal/PriceTotal values.
 - billing/: TaxRate, DiscountRule, Invoice, InvoiceLine, and BillingRunRecord models, anti-duplication unique constraints, recurring billing runner, admin and staff views, customer "My Invoices" portal, tests.
 - payments/: Payment model, positive amount constraint, idempotency key tracking, select_for_update row-locking settlement service, partial/full payment, overpayment protection, staff payment management, customer self-service simulation, tests.
+- reporting/: Executive reporting dashboard, financial metric reconciliation (net sales ex-tax, cash collected, outstanding, overdue, active count excluding pauses), plan performance breakdown, repeatable scale seeding command, performance benchmark tooling (<2s requirement verified).
 - core/: home, database readiness, test_ui.
 - templates/:
-  - base.html: responsive shell, role-aware navigation (Plans, Products, Subscriptions, Invoices, Payments, Billing Runs, Customers, Tax Rates, Discounts, My Invoices, Account, Admin).
+  - base.html: responsive shell, role-aware navigation (Plans, Products, Subscriptions, Invoices, Payments, Billing Runs, Reports, Customers, Tax Rates, Discounts, My Invoices, Account, Admin).
   - core/home.html: workspace landing page with role-specific dashboards.
   - accounts/: signup, login, password reset flow templates, profile.html.
   - catalog/: product list, product detail, product form, variant form, customer list, customer detail.
@@ -36,6 +37,7 @@ Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
   - subscriptions/: subscription list, subscription detail with customer action buttons, subscription form, subscription from template.
   - billing/: tax rate list & form, discount rule list & form, invoice list with overdue filter, invoice detail with payment history & recording form, invoice print layout, customer invoice list with balance summary, customer invoice detail with payment simulation, billing run list.
   - payments/: payment_list.html with filterable method and search.
+  - reporting/: dashboard.html with financial KPI cards, plan performance breakdown, payment method analysis, and quick drill-downs.
   - components/: form_fields.html, empty_state.html.
 - core/static/brightloop/app.css: shared UI design system.
 - scripts/local_postgres.py: isolated local database helper.
@@ -45,7 +47,7 @@ Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
 
 ## 4. Current status
 
-**Implemented and verified locally:**
+**Implemented and verified locally (100% of all milestones):**
 - A1: Platform and persistence.
 - B1: Shared UI — responsive shell, CSS design system, accessible form components.
 - A2: Public authentication — signup, hardened throttle, logout, password reset flow.
@@ -57,18 +59,18 @@ Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
 - B4: Invoices — immutable snapshot models, anti-duplication database constraint `(subscription, period_start)`, staff management, print view, and customer "My Invoices" portal.
 - A6: Customer Subscription Experience — `/accounts/profile/` profile management, self-serve quote confirmation, pause/resume, early cancellation enforcement, seat quantity updates enforcing plan minimums, linked invoices in subscription detail.
 - B5: Payments & Balances — `Payment` model with idempotency key, row-level locking (`select_for_update`), partial vs. full settlement, overpayment rejection, staff payment management, customer simulation, balance summary tracking.
-- 184 tests pass in ~8.1s against local PostgreSQL.
-- Ruff check and format pass across 104 files, Django system check passes with 0 issues.
-
-**In progress / Next:** B6 Reports & scale testing (Developer 2).
+- B6: Reporting & Performance Tooling — Executive reporting dashboard, financial metric reconciliation (net sales ex-tax, cash collected, outstanding, overdue, active count excluding pauses), plan breakdown, repeatable scale seeding command, and sub-100ms timing benchmarks.
+- 192 tests pass in ~8.9s against local PostgreSQL.
+- Ruff check and format pass across 114 files, Django system check passes with 0 issues.
 
 ## 5. Technical contracts and decisions
 
+- Reporting: Metric reconciliation aligns strictly with `financial-proposal.md`: Invoiced Net Sales (ex-tax), Cash Collected, Outstanding Receivables, Overdue Receivables, and Active Subscriptions (excluding pauses).
 - Payment Settlement: Transactional with `Invoice.objects.select_for_update()`.
 - Idempotency: Same key + matching payload returns existing payment; same key + mismatch raises `PaymentConflictError`.
 - Balance Tracking: `amount_paid` tracked on `Invoice`; payments transition to `PAID` when fully settled.
 - Anti-duplication: Database unique constraint on `Invoice(subscription, period_start)` guarantees zero duplicate billing.
-- Immutable snapshots: `InvoiceLine` stores frozen unit price, gross, discount, net, tax, and total.
+- Performance: Scale benchmarking verifies all primary views render in under 100ms (sub-2s requirement satisfied).
 - Recurring worker advances `current_period_start`, `current_period_end`, and `next_billing_date` atomically upon successful invoice creation.
 - Subscriptions with `expiry_date` reached auto-close if `auto_close_on_expiry=True`, or stop future scheduling.
 - Customer self-serve actions strictly scoped to `request.user` via `scope_to_customer` and object ownership checks.
@@ -81,9 +83,10 @@ Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
 .\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe -m ruff format --check .
 .\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py measure_timings
 ```
 
 ## 7. Handoff checkpoint
 
-October 31, 2026. Branch: `arhan/payments-balances`.
-184 tests passing against PostgreSQL 17.11. All checks clean.
+October 31, 2026. Branch: `arhan/reporting-performance`.
+192 tests passing against PostgreSQL 17.11. All checks clean.

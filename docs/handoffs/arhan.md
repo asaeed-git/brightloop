@@ -1,51 +1,51 @@
 # Syed Arhan: incoming work
 
-## Current checkpoint: B5 Payments & Balances
+## Current checkpoint: B6 Reports & Scale Testing (All Developer 2 Milestones B1–B6 Complete)
 
-October 31, 2026. Branch `arhan/payments-balances`, based on `main` (commit `e58d07d`, after Abbas's A6).
+October 31, 2026. Branch `arhan/reporting-performance`, based on `arhan/payments-balances`.
 
-Implemented Milestone B5 (Payments & Balances):
-- `payments/models.py`:
-  - `Payment`: UUID primary key, positive exact INR Decimal `amount` (`MinValueValidator(Decimal("0.01"))`), unique `idempotency_key` (max 128 chars), method choices (`CARD`, `UPI`, `BANK_TRANSFER`, `CASH`, `SIMULATED`), `paid_at` timestamp, `transaction_ref`, `notes`, FK to `billing.Invoice` (`on_delete=PROTECT`), and FK to `settings.AUTH_USER_MODEL` (`on_delete=PROTECT`).
-  - Database check constraint `payments_payment_amount_positive` (`amount > 0.00`).
-  - Indexes on `invoice` and `(customer, -paid_at)`.
-- `payments/services.py`:
-  - `record_payment(...)`:
-    - Wraps payment recording in an atomic transaction (`transaction.atomic()`).
-    - Row-level lock on `Invoice.objects.select_for_update()`.
-    - **Idempotency & replay protection**: Replaying same `idempotency_key` with identical payload returns existing `Payment` without duplicate debit; mismatched payload with same key raises `PaymentConflictError`.
-    - **Overpayment protection**: Rejects payments exceeding `invoice.amount_due` at the service level (`OverpaymentError`) and respects the database check constraint `billing_invoice_amount_paid_lte_total`.
-    - **Partial settlement**: Updates `invoice.amount_paid`, keeps status `CONFIRMED`.
-    - **Full settlement**: When `invoice.amount_paid >= invoice.total`, transitions `status` to `PAID` and sets `paid_at`.
-- `payments/forms.py`:
-  - `PaymentForm` for staff payment recording with method, amount, reference, notes, and optional UUID idempotency key.
-- `payments/views.py` & `payments/urls.py`:
-  - `payment_list`: Filterable staff directory of all recorded payments by method or search query (`invoice__number`, `customer__email`, `transaction_ref`), with total collected aggregation.
-  - `payment_create`: Staff action to record partial or full settlement against any invoice with row locking and error handling.
-  - `customer_payment_create`: Customer self-service payment recording/simulation, strictly scoped via `scope_to_customer` (cannot pay other customers' invoices; raises 404).
-- `billing/views.py` & templates:
-  - Added `OVERDUE` filter to staff invoice list (`billing/invoice_list.html`).
-  - Added customer account balance summary (total invoiced, total settled, outstanding balance) in `billing/customer_invoice_list.html`.
-  - Embedded payment history and "Record Payment" form in `billing/invoice_detail.html` (staff).
-  - Embedded payment history and "Pay Statement / Simulate Payment" in `billing/customer_invoice_detail.html` (customer).
-- `templates/base.html`:
-  - Added role-aware `Payments` navigation link for Admin/Staff.
-- `payments/tests.py`:
-  - 16 tests covering partial settlement, full settlement, cumulative payments, overpayment rejection, unpayable invoice validation, idempotent replay, payload conflict rejection, DB positive amount constraint, concurrent payment race prevention with `select_for_update` (`PaymentConcurrencyTests`), staff view access, customer 403 on staff list, customer self-service simulation, customer cross-account payment isolation (HTTP 404), overdue filtering, and customer balance aggregation.
-- Total test suite: **184 tests passing in ~8.1s against local PostgreSQL (127.0.0.1:55432)** with 0 failures and 0 errors.
+Implemented Milestone B6 (Reporting & Performance Tooling):
+- `reporting/services.py`:
+  - `get_financial_dashboard_metrics(start_date, end_date, as_of_date)`:
+    - **Invoiced Net Sales (ex-tax)**: Excludes tax (`net_total = subtotal - discount_total`) for non-cancelled invoices, with breakdown for gross sales, discounts, and taxes.
+    - **Cash Collections**: Reconciled sum of settled payment records, with channel breakdown (`CARD`, `UPI`, `BANK_TRANSFER`, `CASH`, `SIMULATED`).
+    - **Outstanding Receivables**: Real-time balance due (`total - amount_paid`) on confirmed invoices.
+    - **Overdue Receivables**: Aging analysis identifying invoices where `due_date < as_of_date`.
+    - **Subscription Health**: Strictly consumes Abbas's canonical contract where `active_paying_count` counts `status=ACTIVE and is_paused=False` (excludes pauses), with paused, quotation, draft, and closed tallies.
+    - **Plan Distribution**: Subscription volume and net revenue breakdown by plan.
+- `reporting/views.py` & `reporting/urls.py`:
+  - `dashboard`: Protected view (`require_roles` ADMIN/STAFF) with preset date filtering (`7d`, `30d`, `month`, `all`) and custom date range picking (`start_date` to `end_date`), along with drill-down tables for recent invoices and payments.
+- `templates/reporting/dashboard.html`:
+  - Executive KPI cards for Net Sales, Cash Collected, Outstanding Receivables, Overdue Receivables, and Active Subscriptions.
+  - Plan breakdown table with active vs. paused counts and invoiced net revenue.
+  - Cash collections by channel table and invoice lifecycle breakdown.
+- `reporting/management/commands/seed_scale_data.py`:
+  - Repeatable management command (`manage.py seed_scale_data --subscriptions N --customers M`) creating realistic bulk data with plans, products, subscriptions, lines, invoices, and payments.
+- `reporting/management/commands/measure_timings.py`:
+  - Repeatable performance timing benchmark verifying query efficiency (`CaptureQueriesContext`) and response speed across Home, Reports, Subscriptions, Invoices, Catalog, and Plans.
+  - **Results**: All primary pages render in **5.2ms – 95.3ms** (well under the 2.0-second requirement).
+- `templates/base.html` & `core/test_ui.py`:
+  - Added role-aware `Reports` navigation link (`/reporting/`) for Admin and Staff.
+- `reporting/tests.py`:
+  - 8 tests covering exact metric reconciliation, date range slicing, role access guards (403 for customers), preset/custom filtering, scale seeding command, and benchmark command execution.
+- Total test suite: **192 tests passing in ~8.9s against local PostgreSQL (127.0.0.1:55432)** with 0 failures and 0 errors.
 
 Verification actually run:
-- Applied `payments.0001_initial` migration to local PostgreSQL.
-- Ran full test suite: 184 tests passed (184 OK, 0 failures).
-- Ruff check: All checks passed across entire codebase (104 files).
-- Ruff format check: 104 files formatted cleanly.
+- Full test suite: 192 tests passed (192 OK, 0 failures, 0 errors).
+- Benchmark command: All measured pages render under 100ms (<2.0s requirement verified).
+- Ruff check: All checks passed across entire codebase (114 files).
+- Ruff format check: 114 files formatted cleanly.
 - Django system check: 0 issues.
 - Migrations check: No uncreated migrations (`manage.py makemigrations --check --dry-run`).
 - Static assets collected cleanly.
 
-Next:
-- Commit and push `arhan/payments-balances`.
-- Milestone B6: Reports & scale testing (Developer 2).
+Status:
+- Milestones **B1–B6** (Developer 2 scope) are **100% complete**.
+- Combined project milestones **A1–A6** (Developer 1) and **B1–B6** (Developer 2) are **100% implemented**.
+
+## Previous checkpoint: B5 Payments & Balances
+
+Implemented `payments` app: `Payment` model with idempotency key, `select_for_update` row-level locking settlement service, partial/full payment, overpayment protection, staff payment management, customer simulation, balance summary tracking.
 
 ## Previous checkpoint: B3 Recurring Billing Engine & B4 Invoices (merged to main)
 
