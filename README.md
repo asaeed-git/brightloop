@@ -31,11 +31,17 @@ python -m venv .venv
 .\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
-`init` creates only this project's database cluster in `.local/postgres`, listens on
-`127.0.0.1:55432`, generates private credentials in ignored `.env`, and refuses to overwrite
-an existing setup. It does not change your system PostgreSQL service. If PostgreSQL is not
-installed at `C:\Program Files\PostgreSQL\17\bin`, set `POSTGRES_BIN` to its `bin` directory.
-Do not run `init` again on this already-configured computer.
+`init` automatically creates this project's isolated database cluster in `.local/postgres`,
+listens on `127.0.0.1:55432`, generates private credentials and `DJANGO_SECRET_KEY` into an
+ignored `.env` file, and starts PostgreSQL. You do **not** need to manually copy `.env.example`.
+
+If an incomplete `.env` or cluster already exists on your machine, re-initialize with `--force`:
+```powershell
+.\.venv\Scripts\python.exe scripts/local_postgres.py init --force
+```
+
+If PostgreSQL 17 is not installed at the default `C:\Program Files\PostgreSQL\17\bin`, set
+`POSTGRES_BIN` to its `bin` directory before running `init`.
 
 Open http://127.0.0.1:8000/ for the starter page and http://127.0.0.1:8000/admin/ to sign in
 with the administrator you created. No default administrator or shared password is supplied.

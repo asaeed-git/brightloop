@@ -45,11 +45,22 @@ def start():
     pg_ctl("-l", str(LOCAL / "postgres.log"), "-w", "start")
 
 
-def init():
+def init(force=False):
     if ENV.exists() or DATA.exists():
-        raise SystemExit(
-            "Existing .env or cluster found; refusing to overwrite. Use start or README."
-        )
+        if not force:
+            raise SystemExit(
+                "Existing .env or cluster found; refusing to overwrite. Use 'start', or run with --force to re-initialize:\n"
+                "  python scripts/local_postgres.py init --force"
+            )
+        try:
+            if DATA.exists() and pg_ctl("status", check=False).returncode == 0:
+                pg_ctl("-m", "fast", "-w", "stop", check=False)
+        except Exception:
+            pass
+        if DATA.exists():
+            shutil.rmtree(DATA, ignore_errors=True)
+        if ENV.exists():
+            ENV.unlink(missing_ok=True)
     LOCAL.mkdir(exist_ok=True)
     admin_password = secrets.token_urlsafe(48)
     password_file = LOCAL / "postgres-init-password"
@@ -120,9 +131,15 @@ def check():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["init", "start", "stop", "status", "check"])
-    action = parser.parse_args().action
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-initialization of cluster and .env, replacing any existing setup",
+    )
+    args = parser.parse_args()
+    action = args.action
     if action == "init":
-        init()
+        init(force=args.force)
     elif action == "start":
         start()
     elif action == "stop":
