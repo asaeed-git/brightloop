@@ -17,6 +17,11 @@ urlpatterns = [
         name="subscription_line_delete",
     ),
     path(
+        "<uuid:pk>/lines/<uuid:line_pk>/update-quantity/",
+        views.subscription_line_update_quantity,
+        name="subscription_line_update_quantity",
+    ),
+    path(
         "<uuid:pk>/transition/<str:action>/",
         views.subscription_transition,
         name="subscription_transition",

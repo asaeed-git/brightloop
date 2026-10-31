@@ -43,6 +43,7 @@
     <div class="notice notice--warning" style="margin-bottom:20px">
       <strong>Service Paused:</strong> Paused on {{ subscription.pause_date }}.
       {% if subscription.pause_reason %}Reason: <em>{{ subscription.pause_reason }}</em>{% endif %}
+      {% if not is_internal %}You can resume service at any time below.{% endif %}
     </div>
   {% elif subscription.status == 'QUOTATION' %}
     {% if subscription.is_quotation_expired %}
@@ -52,6 +53,7 @@
     {% else %}
       <div class="notice notice--accent" style="margin-bottom:20px">
         <strong>Pending Quotation:</strong> Issued on {{ subscription.quotation_date|default:'today' }}. Valid for acceptance through <strong>{{ subscription.quotation_valid_until }}</strong>.
+        {% if not is_internal %}Please review the line items and pricing below, then click <strong>Accept Quotation</strong> to confirm.{% endif %}
       </div>
     {% endif %}
   {% elif subscription.status == 'CLOSED' %}
@@ -63,10 +65,10 @@
 
   <!-- Lifecycle Actions Panel -->
   <div class="panel" style="margin-bottom:24px;background:var(--surface-sunken, #f8fafc)">
-    <h3 style="margin-top:0">Lifecycle Actions</h3>
+    <h3 style="margin-top:0">Subscription Actions</h3>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
 
-      <!-- DRAFT ACTIONS -->
+      <!-- DRAFT ACTIONS (Staff only) -->
       {% if subscription.status == 'DRAFT' and is_internal %}
         <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='send_quote' %}" style="display:flex;gap:8px;align-items:center;margin:0">
           {% csrf_token %}
@@ -89,8 +91,8 @@
         {% if not subscription.is_quotation_expired %}
           <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='confirm' %}" style="margin:0">
             {% csrf_token %}
-            <button type="submit" class="button button--primary" style="min-height:36px">
-              {% if is_internal %}Confirm Quotation{% else %}Accept Quotation{% endif %}
+            <button type="submit" class="button button--primary" style="min-height:38px;padding:6px 18px;font-size:14px">
+              {% if is_internal %}Confirm Quotation{% else %}✔ Accept & Confirm Quotation{% endif %}
             </button>
           </form>
         {% endif %}
@@ -106,22 +108,32 @@
             <input type="hidden" name="reason" value="Quotation rejected / cancelled">
             <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Reject quotation?')">Reject / Close</button>
           </form>
+        {% elif not is_internal and subscription.can_early_close %}
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='close' %}" style="margin:0">
+            {% csrf_token %}
+            <input type="hidden" name="reason" value="Declined by customer">
+            <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Decline this quotation?')">Decline Quote</button>
+          </form>
         {% endif %}
       {% endif %}
 
       <!-- CONFIRMED ACTIONS -->
-      {% if subscription.status == 'CONFIRMED' and is_internal %}
-        <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='activate' %}" style="display:flex;gap:8px;align-items:center;margin:0">
-          {% csrf_token %}
-          <label style="font-size:13px;font-weight:600">Start Date:</label>
-          <input type="date" name="start_date" value="{{ subscription.start_date|date:'Y-m-d' }}" style="height:36px;padding:4px 8px;font-size:13px">
-          <button type="submit" class="button button--primary" style="min-height:36px">Activate Subscription</button>
-        </form>
-        <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='close' %}" style="margin:0">
-          {% csrf_token %}
-          <input type="hidden" name="reason" value="Cancelled before activation">
-          <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Cancel subscription?')">Cancel</button>
-        </form>
+      {% if subscription.status == 'CONFIRMED' %}
+        {% if is_internal %}
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='activate' %}" style="display:flex;gap:8px;align-items:center;margin:0">
+            {% csrf_token %}
+            <label style="font-size:13px;font-weight:600">Start Date:</label>
+            <input type="date" name="start_date" value="{{ subscription.start_date|date:'Y-m-d' }}" style="height:36px;padding:4px 8px;font-size:13px">
+            <button type="submit" class="button button--primary" style="min-height:36px">Activate Subscription</button>
+          </form>
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='close' %}" style="margin:0">
+            {% csrf_token %}
+            <input type="hidden" name="reason" value="Cancelled before activation">
+            <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Cancel subscription?')">Cancel</button>
+          </form>
+        {% else %}
+          <p class="muted" style="margin:0;font-size:14px">Your subscription is confirmed and awaiting service activation on {{ subscription.start_date|default:'scheduled start' }}.</p>
+        {% endif %}
       {% endif %}
 
       <!-- ACTIVE ACTIONS -->
@@ -129,7 +141,7 @@
         {% if not subscription.is_paused and subscription.can_pause %}
           <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='pause' %}" style="display:flex;gap:8px;align-items:center;margin:0">
             {% csrf_token %}
-            <input type="text" name="reason" placeholder="Pause reason" style="height:36px;padding:4px 8px;font-size:13px">
+            <input type="text" name="reason" placeholder="Optional pause reason" style="height:36px;padding:4px 8px;font-size:13px">
             <button type="submit" class="button" style="min-height:36px">Pause Service</button>
           </form>
         {% elif subscription.is_paused %}
@@ -148,11 +160,11 @@
           </form>
         {% endif %}
 
-        {% if is_internal and subscription.can_early_close %}
+        {% if subscription.can_early_close %}
           <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='close' %}" style="display:flex;gap:8px;align-items:center;margin:0">
             {% csrf_token %}
-            <input type="text" name="reason" placeholder="Closure reason" style="height:36px;padding:4px 8px;font-size:13px">
-            <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Terminate subscription?')">Close Subscription</button>
+            <input type="text" name="reason" placeholder="Cancellation reason" style="height:36px;padding:4px 8px;font-size:13px">
+            <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Cancel this subscription?')">Cancel Subscription</button>
           </form>
         {% endif %}
       {% endif %}
@@ -274,11 +286,9 @@
               <th scope="col">Product</th>
               <th scope="col">Variant</th>
               <th scope="col" class="amount">Unit Price</th>
-              <th scope="col" style="text-align:center">Quantity</th>
+              <th scope="col" style="text-align:center">Quantity / Seats</th>
               <th scope="col" class="amount">Line Gross</th>
-              {% if is_internal and subscription.status in 'DRAFT,QUOTATION' %}
-                <th scope="col">Action</th>
-              {% endif %}
+              <th scope="col">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -296,16 +306,28 @@
                   {% endif %}
                 </td>
                 <td class="amount">₹{{ line.unit_price }}</td>
-                <td style="text-align:center">{{ line.quantity }}</td>
+                <td style="text-align:center">
+                  {% if subscription.status in 'ACTIVE,DRAFT,QUOTATION' %}
+                    <form method="post" action="{% url 'subscriptions:subscription_line_update_quantity' pk=subscription.pk line_pk=line.pk %}" style="display:inline-flex;align-items:center;gap:6px;margin:0">
+                      {% csrf_token %}
+                      <input type="number" name="quantity" value="{{ line.quantity }}" min="1" max="9999" style="width:64px;height:32px;padding:2px 6px;text-align:center;font-size:13px">
+                      <button type="submit" class="button button--compact" style="min-height:32px;font-size:12px">Update</button>
+                    </form>
+                  {% else %}
+                    {{ line.quantity }}
+                  {% endif %}
+                </td>
                 <td class="amount"><strong>₹{{ line.line_gross }}</strong></td>
-                {% if is_internal and subscription.status in 'DRAFT,QUOTATION' %}
-                  <td>
+                <td>
+                  {% if is_internal and subscription.status in 'DRAFT,QUOTATION' %}
                     <form method="post" action="{% url 'subscriptions:subscription_line_delete' pk=subscription.pk line_pk=line.pk %}" style="margin:0">
                       {% csrf_token %}
                       <button type="submit" class="button" style="min-height:28px;padding:2px 8px;font-size:12px;color:var(--error)" onclick="return confirm('Remove line item?')">Remove</button>
                     </form>
-                  </td>
-                {% endif %}
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endif %}
+                </td>
               </tr>
             {% endfor %}
           </tbody>
@@ -345,7 +367,7 @@
 
   <!-- Pricing Breakdown Panel (Pure B2 Calculator) -->
   {% if pricing %}
-    <div class="panel" style="max-width:500px;margin-left:auto">
+    <div class="panel" style="max-width:500px;margin-left:auto;margin-bottom:32px">
       <h2>Cycle Pricing Summary</h2>
       <p class="muted" style="font-size:13px">Official cycle amount calculated with B2 financial engine.</p>
       
@@ -380,4 +402,73 @@
       </div>
     </div>
   {% endif %}
+
+  <!-- Linked Invoices & Billing History -->
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin:0">Invoices & Billing History</h2>
+    </div>
+
+    {% if invoices %}
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Subscription Invoices">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Invoice #</th>
+              <th scope="col">Period</th>
+              <th scope="col">Issued</th>
+              <th scope="col">Due Date</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="amount">Total</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in invoices %}
+              <tr>
+                <td>
+                  <strong>
+                    {% if is_internal %}
+                      <a href="{% url 'billing:invoice_detail' pk=inv.pk %}">{{ inv.number }}</a>
+                    {% else %}
+                      <a href="{% url 'billing:customer_invoice_detail' pk=inv.pk %}">{{ inv.number }}</a>
+                    {% endif %}
+                  </strong>
+                </td>
+                <td><small>{{ inv.period_start }} to {{ inv.period_end }}</small></td>
+                <td><small>{{ inv.issue_date }}</small></td>
+                <td><small>{{ inv.due_date }}</small></td>
+                <td>
+                  {% if inv.status == 'PAID' %}
+                    <span class="badge badge--success">Paid</span>
+                  {% elif inv.status == 'CONFIRMED' %}
+                    {% if inv.is_overdue %}
+                      <span class="badge badge--error">Overdue</span>
+                    {% else %}
+                      <span class="badge badge--accent">Payment Due</span>
+                    {% endif %}
+                  {% elif inv.status == 'CANCELLED' %}
+                    <span class="badge badge--muted">Cancelled</span>
+                  {% else %}
+                    <span class="badge">Draft</span>
+                  {% endif %}
+                </td>
+                <td class="amount"><strong>₹{{ inv.total }}</strong></td>
+                <td>
+                  {% if is_internal %}
+                    <a href="{% url 'billing:invoice_detail' pk=inv.pk %}" class="button button--compact">View</a>
+                  {% else %}
+                    <a href="{% url 'billing:customer_invoice_detail' pk=inv.pk %}" class="button button--compact">View</a>
+                  {% endif %}
+                  <a href="{% url 'billing:invoice_print' pk=inv.pk %}" class="button button--compact" target="_blank" rel="noopener">Print</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% include 'components/empty_state.html' with empty_title="No invoices generated yet" empty_description="Invoices will be automatically issued on each scheduled billing date." %}
+    {% endif %}
+  </div>
 {% endblock %}

@@ -1,38 +1,36 @@
-# Abbas: A5 Subscription Lifecycle Checkpoint
+# Abbas: A6 Customer Subscription Experience Checkpoint
 
-Scope: A1 platform, A2 public authentication, A3 catalog & customers, A4 plans & quotation templates, A5 subscription lifecycle.
-Status: A1–A5 and B1–B2 merged and verified on `main`; 151 tests pass; unblocked Syed's B3 recurring billing worker.
+Scope: A1 platform, A2 public authentication, A3 catalog & customers, A4 plans & quotation templates, A5 subscription lifecycle, A6 customer subscription experience.
+Status: A1–A6 merged and verified on `main` alongside Syed's B1–B4; 168 tests pass against local PostgreSQL; ready for Syed's B5 Payments & Balances.
 
-## Completed and verified
+## Completed and verified in A6
 
-1. **A5 Subscription Lifecycle (`subscriptions/`)**:
-   - `subscriptions/models.py`:
-     - `Subscription`: unique readable reference `number` (`SUB-YYYYMM-XXXX`), `customer`, `plan`, `status` (`DRAFT`, `QUOTATION`, `CONFIRMED`, `ACTIVE`, `CLOSED`), `base_price` (non-negative DB check constraint), `tax_rate`, `discount_rule`, `start_date`, `expiry_date` (constrained to be $\ge \text{start\_date}$), `current_period_start`, `current_period_end`, `next_billing_date`, `quotation_date`, `quotation_valid_until`, `payment_terms_days`, lifecycle policy flags (`can_pause`, `is_paused`, `pause_date`, `pause_reason`, `can_early_close`, `auto_close_on_expiry`, `can_renew`, `close_date`, `close_reason`), notes, and timestamps.
-     - `SubscriptionLine`: `subscription`, `product`, `variant` (validated to belong to product), `quantity` ($\ge 1$), and `unit_price` ($\ge 0.00$).
-   - `subscriptions/services.py`:
-     - Clean lifecycle state machine:
-       - `transition_to_quotation`: validates lines and plan minimum seat quantity; initializes `quotation_date` and `quotation_valid_until`.
-       - `transition_to_confirmed`: validates quotation validity (strictly blocks expired quotations until validity is extended); transitions to Confirmed.
-       - `transition_to_active`: activates subscription, computes `current_period_start`, `current_period_end` (with calendar month clamping and contract expiry clipping), sets `next_billing_date = current_period_start` (upfront billing).
-       - `pause_subscription` / `resume_subscription`: respects `can_pause`, tracks pause reason and date.
-       - `close_subscription`: validates `can_early_close` against contract expiry.
-       - `renew_subscription`: extends `expiry_date` and can reopen closed subscriptions.
-       - `create_subscription_from_template`: clones template lines, sets unit snapshot prices and validity dates.
-       - `calculate_subscription_pricing`: integrates with pure B2 `calculate_price` engine to compute exact cycle totals, including base fee, lines, taxes, and eligible discounts.
-   - `subscriptions/forms.py` & `subscriptions/views.py`:
-     - Full role-guarded CRUD and action endpoints: create draft, create quote from template, edit terms, add/remove line items, execute lifecycle actions.
-     - Customer scoping: customers only see their own subscriptions and can accept/confirm valid quotations.
-   - `templates/subscriptions/`:
-     - Responsive templates matching Syed's UI system (`subscription_list.html`, `subscription_detail.html`, `subscription_form.html`, `subscription_from_template.html`).
-   - `subscriptions/tests.py`:
-     - 18 focused unit and integration tests covering database constraints, period calculation, lifecycle transitions, pause/resume, early close restrictions, quotation expiration enforcement, template quotation generation, live pricing calculation, and access control.
-2. **Total Test Suite**:
-   - 151 automated tests passing in ~2.3s against local PostgreSQL 17.11.
-   - 0 linter errors, clean formatting, 0 Django check issues.
+1. **Customer Account Profile (`/accounts/profile/`)**:
+   - `accounts/forms.py`: `ProfileForm` for editing `first_name` and `last_name` with standard whitespace cleaning.
+   - `accounts/views.py`: `profile` view restricted to authenticated users; loads recent subscriptions and customer invoices.
+   - `templates/accounts/profile.html`: Styled profile page with account info, name editing, password reset link, subscription status list, and recent invoice history.
+   - `accounts/tests.py`: `ProfileTests` verifying login requirement, customer data rendering, and profile updates.
 
-## Next Target: A6 Customer Portal & Syed's B3 Recurring Billing
+2. **Customer Subscription Self-Service Actions (`subscriptions/`)**:
+   - **Quotation Acceptance**: Customers can accept/confirm valid quotations (`action='confirm'`) directly from the subscription detail page.
+   - **Pause & Resume**: Customers can pause active subscriptions with reason when `can_pause=True` (`action='pause'`) and resume paused subscriptions (`action='resume'`).
+   - **Early Cancellation**: Customers can cancel active subscriptions with reason when `can_early_close=True` (`action='close'`). Enforces contract lock-in when `can_early_close=False`.
+   - **Seat / Line Quantity Management**: Added route and view `/subscriptions/<pk>/lines/<line_pk>/update-quantity/` allowing customers to update line quantities subject to `plan.min_quantity`.
+   - **Linked Invoices Display**: `subscription_detail` prefetches and displays all issued billing invoices for that subscription, with status badges, period ranges, and amounts.
+   - **Confidentiality & Access Control**: Server-side cost prices remain excluded; customers cannot view or modify other customers' subscriptions (`scope_to_customer`).
+   - `subscriptions/tests.py`: 6 automated tests covering customer quote acceptance, pause/resume, early close permission and denial, line quantity updates, and plan minimum seat enforcement.
 
-- B3 Recurring Billing worker can query:
-  `Subscription.objects.filter(status='ACTIVE', is_paused=False, next_billing_date__lte=today)`
-  to generate period invoices for `[current_period_start, current_period_end)`.
-- A6 polish: dedicated customer portal self-serve views and actions.
+3. **Workspace Navigation & Dashboard**:
+   - `templates/base.html`: Added "Account" navigation link in sidebar and topbar customer email profile link.
+   - `templates/core/home.html`: Added customer quick actions card for Subscriptions, Invoices, and Account Settings.
+
+4. **Total Verification**:
+   - 168 tests pass in ~2.7s on PostgreSQL 17.11.
+   - Ruff check & format: 0 errors across 93 files.
+   - Django check: 0 issues.
+
+## Next Steps for Syed (Developer 2)
+
+- Proceed with **B5 Payments & Balances**:
+  - Payment records, balance tracking, manual/simulated payment capture against issued invoices.
+  - Marking `Invoice.status = 'PAID'` upon full payment and updating subscription balance.

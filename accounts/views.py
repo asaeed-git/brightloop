@@ -10,6 +10,7 @@ Rate limiting uses accounts.throttle, which requires no extra packages.
 
 from django.contrib import messages
 from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import (
     LoginView,
     LogoutView,
@@ -25,6 +26,7 @@ from .forms import (
     BrightloopAuthenticationForm,
     BrightloopPasswordResetForm,
     BrightloopSetPasswordForm,
+    ProfileForm,
     SignupForm,
 )
 from .throttle import check_throttle
@@ -127,3 +129,33 @@ class BrightloopLogoutView(LogoutView):
     """
 
     next_page = "home"
+
+
+@login_required
+def profile(request):
+    user = request.user
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your profile details have been updated.")
+            return redirect("accounts:profile")
+    else:
+        form = ProfileForm(instance=user)
+
+    active_subs_count = user.subscriptions.filter(status="ACTIVE", is_paused=False).count()
+    paused_subs_count = user.subscriptions.filter(status="ACTIVE", is_paused=True).count()
+    pending_quotes_count = user.subscriptions.filter(status="QUOTATION").count()
+    invoices_due_count = user.invoices.filter(status="CONFIRMED").count()
+
+    return render(
+        request,
+        "accounts/profile.html",
+        {
+            "form": form,
+            "active_subs_count": active_subs_count,
+            "paused_subs_count": paused_subs_count,
+            "pending_quotes_count": pending_quotes_count,
+            "invoices_due_count": invoices_due_count,
+        },
+    )

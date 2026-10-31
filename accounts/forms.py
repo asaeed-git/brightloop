@@ -51,19 +51,18 @@ class SignupForm(forms.ModelForm):
         return p2
 
     def clean(self):
-        cleaned = super().clean()
-        password = cleaned.get("password1")
-        if password:
-            # Build a throwaway User instance so similarity validators can compare
-            # the password against the email.  Role is always CUSTOMER.
-            candidate = User(email=cleaned.get("email", ""), role=User.Role.CUSTOMER)
-            validate_password(password, candidate)
-        return cleaned
+        cleaned_data = super().clean()
+        p1 = cleaned_data.get("password1")
+        p2 = cleaned_data.get("password2")
+        if p1 and p2 and p1 == p2:
+            # Construct a dummy user to run Django password validators against
+            dummy = User(email=cleaned_data.get("email", ""), role=User.Role.CUSTOMER)
+            validate_password(p1, user=dummy)
+        return cleaned_data
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        # Unconditionally set CUSTOMER regardless of anything in POST data.
-        user.role = User.Role.CUSTOMER
+        user.role = User.Role.CUSTOMER  # hard requirement from the foundation contract
         user.set_password(self.cleaned_data["password1"])
         if commit:
             user.save()
@@ -72,17 +71,13 @@ class SignupForm(forms.ModelForm):
 
 class BrightloopAuthenticationForm(AuthenticationForm):
     """
-    Thin wrapper around Django's built-in login form.
-
-    Sets autocomplete attributes for browsers and normalizes the submitted
-    email to lowercase before authentication so case-variant logins work.
-    Django's authenticate() also calls get_by_natural_key() which uses
-    iexact, but normalizing here ensures the displayed value is canonical.
+    Thin wrapper over AuthenticationForm that normalizes the email field
+    (stored in AuthenticationForm.username) to lower-case on clean.
     """
 
     username = forms.EmailField(
         label="Email address",
-        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "autofocus": True}),
     )
     password = forms.CharField(
         label="Password",
@@ -129,3 +124,13 @@ class BrightloopSetPasswordForm(SetPasswordForm):
         strip=False,
         widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
     )
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name")
+        widgets = {
+            "first_name": forms.TextInput(attrs={"autocomplete": "given-name"}),
+            "last_name": forms.TextInput(attrs={"autocomplete": "family-name"}),
+        }

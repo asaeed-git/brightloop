@@ -349,3 +349,33 @@ class AuthFlowTests(TestCase):
         response = self.client.post(self.RESET_URL, {"email": "EXISTING@EXAMPLE.COM"})
         self.assertRedirects(response, "/accounts/password-reset/sent/")
         self.assertEqual(len(mail.outbox), 1)
+
+
+class ProfileTests(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create_user(
+            "customer@example.com", "LongPhrase!", role=User.Role.CUSTOMER
+        )
+
+    def test_profile_requires_login(self):
+        response = self.client.get("/accounts/profile/")
+        self.assertRedirects(response, "/accounts/login/?next=/accounts/profile/")
+
+    def test_profile_get_renders_customer_info(self):
+        self.client.force_login(self.customer)
+        response = self.client.get("/accounts/profile/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "customer@example.com")
+        self.assertContains(response, "Customer")
+
+    def test_profile_post_updates_name(self):
+        self.client.force_login(self.customer)
+        response = self.client.post(
+            "/accounts/profile/",
+            {"first_name": "Jane", "last_name": "Doe"},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.first_name, "Jane")
+        self.assertEqual(self.customer.last_name, "Doe")

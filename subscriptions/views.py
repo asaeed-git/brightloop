@@ -84,15 +84,18 @@ def subscription_list(request):
 @login_required
 def subscription_detail(request, pk):
     is_internal = request.user.role in [User.Role.ADMIN, User.Role.STAFF]
-    queryset = Subscription.objects.select_related(
-        "customer", "plan", "tax_rate", "discount_rule"
-    ).prefetch_related("lines__product", "lines__variant")
+    queryset = (
+        Subscription.objects.select_related("customer", "plan", "tax_rate", "discount_rule")
+        .prefetch_related("lines__product", "lines__variant", "invoices")
+        .all()
+    )
 
     if not is_internal:
         queryset = queryset.filter(customer=request.user)
 
     subscription = get_object_or_404(queryset, pk=pk)
     lines = subscription.lines.all()
+    invoices = subscription.invoices.all()
 
     # Calculate live pricing breakdown via pure calculator
     pricing = calculate_subscription_pricing(subscription)
@@ -110,6 +113,7 @@ def subscription_detail(request, pk):
         {
             "subscription": subscription,
             "lines": lines,
+            "invoices": invoices,
             "pricing": pricing,
             "line_form": line_form,
             "is_internal": is_internal,
@@ -260,6 +264,49 @@ def subscription_line_delete(request, pk, line_pk):
 
 @login_required
 @require_POST
+def subscription_line_update_quantity(request, pk, line_pk):
+    is_internal = request.user.role in [User.Role.ADMIN, User.Role.STAFF]
+    queryset = (
+        Subscription.objects.all()
+        if is_internal
+        else Subscription.objects.filter(customer=request.user)
+    )
+    subscription = get_object_or_404(queryset, pk=pk)
+    line = get_object_or_404(SubscriptionLine, pk=line_pk, subscription=subscription)
+
+    if subscription.status not in [
+        Subscription.Status.ACTIVE,
+        Subscription.Status.DRAFT,
+        Subscription.Status.QUOTATION,
+    ]:
+        messages.error(request, "Line quantity cannot be modified on a closed subscription.")
+        return redirect("subscriptions:subscription_detail", pk=subscription.pk)
+
+    try:
+        new_quantity = int(request.POST.get("quantity", 0))
+        if new_quantity < 1:
+            raise ValidationError("Quantity must be at least 1.")
+
+        other_qty = sum(sub_line.quantity for sub_line in subscription.lines.exclude(pk=line.pk))
+        if other_qty + new_quantity < subscription.plan.min_quantity:
+            raise ValidationError(
+                f"Total quantity ({other_qty + new_quantity}) would be below the"
+                f" plan's minimum required seats ({subscription.plan.min_quantity})."
+            )
+
+        line.quantity = new_quantity
+        line.save()
+        messages.success(request, f"Updated {line.product.name} quantity to {new_quantity}.")
+    except ValidationError as exc:
+        messages.error(request, exc.message if hasattr(exc, "message") else str(exc))
+    except ValueError:
+        messages.error(request, "Please enter a valid whole number for quantity.")
+
+    return redirect("subscriptions:subscription_detail", pk=subscription.pk)
+
+
+@login_required
+@require_POST
 def subscription_transition(request, pk, action):
     is_internal = request.user.role in [User.Role.ADMIN, User.Role.STAFF]
     queryset = (
@@ -308,10 +355,21 @@ def subscription_transition(request, pk, action):
             messages.success(request, f"Subscription {subscription.number} resumed.")
 
         elif action == "close":
-            require_roles(request.user, User.Role.ADMIN, User.Role.STAFF)
-            reason = request.POST.get("reason", "")
+            reason = request.POST.get("reason", "").strip()
+            if not is_internal:
+                # Customer self-serve cancellation
+                if (
+                    subscription.status == Subscription.Status.ACTIVE
+                    and not subscription.can_early_close
+                ):
+                    raise ValidationError(
+                        "This subscription does not permit early cancellation before"
+                        f" contract expiry ({subscription.expiry_date})."
+                    )
+                if not reason:
+                    reason = "Cancelled by customer"
             close_subscription(subscription, reason=reason)
-            messages.success(request, f"Subscription {subscription.number} closed.")
+            messages.success(request, f"Subscription {subscription.number} has been closed.")
 
         elif action == "renew":
             require_roles(request.user, User.Role.ADMIN, User.Role.STAFF)

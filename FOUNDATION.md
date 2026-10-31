@@ -40,13 +40,13 @@ used for development and tests as well as planned hosting so concurrency tests a
 | Path | Owner | Status |
 | --- | --- | --- |
 | config/, manage.py, scripts/, requirements*, .github/ | Abbas, cross-team review | Implemented platform |
-| accounts/ | Abbas | User model, validator, permissions, admin, public auth flows, throttling implemented |
+| accounts/ | Abbas | User model, validator, permissions, admin, public auth flows, profile, throttling implemented |
 | core/ | Abbas | Home/readiness endpoints |
 | templates/core/home.html | Syed | Implemented workspace welcome screen |
 | templates/base.html, core/static/ | Syed | Implemented shared UI shell & design system |
-| catalog/, plans/, subscriptions/ | Abbas | Catalog, Plans, and Subscriptions lifecycle implemented |
+| catalog/, plans/, subscriptions/ | Abbas | Catalog, Plans, Subscriptions lifecycle, and Customer Experience (A1–A6) implemented |
 | pricing/ | Syed | Pure calculator implemented and integrated into template & subscription previews |
-| billing/ | Syed | TaxRate, DiscountRule, Invoice models, immutable lines, and recurring billing engine implemented; 158 tests passing |
+| billing/ | Syed | TaxRate, DiscountRule, Invoice models, immutable lines, and recurring billing engine implemented; 168 tests passing |
 | payments/, reporting/ | Syed | Planned modules (B5, B6) |
 | docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.5, shared-ui, financial proposal, pricing v0.1 |
 

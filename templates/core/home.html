@@ -23,8 +23,55 @@
     </div>
     <div class="loop-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-core">b<span>.</span></div><span class="orbit-point"></span></div>
   </section>
-  <section class="panel availability-panel" aria-labelledby="availability-title">
-    <div class="section-icon" aria-hidden="true">↗</div>
-    <div><h2 id="availability-title">A foundation for what’s next</h2><p class="muted">Customer subscriptions and billing are still being developed. This workspace does not yet show financial activity.</p></div>
-  </section>
+
+  {% if user.is_authenticated and user.is_active %}
+    {% if user.role == 'CUSTOMER' %}
+      <section class="panel" aria-label="Customer Shortcuts" style="margin-top:24px">
+        <h2 style="margin-top:0">Quick Customer Shortcuts</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-top:16px">
+          <div style="border:1px solid var(--line);border-radius:var(--radius-md, 8px);padding:16px;background:var(--surface)">
+            <h3 style="margin:0 0 6px"><a href="{% url 'subscriptions:subscription_list' %}">My Subscriptions</a></h3>
+            <p class="muted" style="font-size:13px;margin:0 0 12px">View active subscriptions, pending quotations, and pause/resume service.</p>
+            <a href="{% url 'subscriptions:subscription_list' %}" class="button button--compact">Go to Subscriptions →</a>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:var(--radius-md, 8px);padding:16px;background:var(--surface)">
+            <h3 style="margin:0 0 6px"><a href="{% url 'billing:customer_invoice_list' %}">My Invoices</a></h3>
+            <p class="muted" style="font-size:13px;margin:0 0 12px">Access billing statements, track due dates, and print invoices.</p>
+            <a href="{% url 'billing:customer_invoice_list' %}" class="button button--compact">Go to Invoices →</a>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:var(--radius-md, 8px);padding:16px;background:var(--surface)">
+            <h3 style="margin:0 0 6px"><a href="{% url 'plans:plan_list' %}">Available Plans</a></h3>
+            <p class="muted" style="font-size:13px;margin:0 0 12px">Browse available monthly, daily, and annual subscription tiers.</p>
+            <a href="{% url 'plans:plan_list' %}" class="button button--compact">View Plans →</a>
+          </div>
+        </div>
+      </section>
+    {% else %}
+      <section class="panel" aria-label="Staff Shortcuts" style="margin-top:24px">
+        <h2 style="margin-top:0">Operations & Management</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-top:16px">
+          <div style="border:1px solid var(--line);border-radius:var(--radius-md, 8px);padding:16px;background:var(--surface)">
+            <h3 style="margin:0 0 6px"><a href="{% url 'subscriptions:subscription_list' %}">Subscription Directory</a></h3>
+            <p class="muted" style="font-size:13px;margin:0 0 12px">Manage customer subscriptions, quotations, and renewals.</p>
+            <a href="{% url 'subscriptions:subscription_list' %}" class="button button--compact">Manage Subscriptions →</a>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:var(--radius-md, 8px);padding:16px;background:var(--surface)">
+            <h3 style="margin:0 0 6px"><a href="{% url 'billing:invoice_list' %}">Invoice Directory</a></h3>
+            <p class="muted" style="font-size:13px;margin:0 0 12px">Track billing records, print statements, and review payment statuses.</p>
+            <a href="{% url 'billing:invoice_list' %}" class="button button--compact">Manage Invoices →</a>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:var(--radius-md, 8px);padding:16px;background:var(--surface)">
+            <h3 style="margin:0 0 6px"><a href="{% url 'billing:billing_run_list' %}">Billing Runs</a></h3>
+            <p class="muted" style="font-size:13px;margin:0 0 12px">Execute and audit recurring billing cycle processing.</p>
+            <a href="{% url 'billing:billing_run_list' %}" class="button button--compact">Execute Billing →</a>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+  {% else %}
+    <section class="panel availability-panel" aria-labelledby="availability-title" style="margin-top:24px">
+      <div class="section-icon" aria-hidden="true">↗</div>
+      <div><h2 id="availability-title">A foundation for what’s next</h2><p class="muted">Customer subscriptions and billing self-service are still being developed. Sign in or create an account to view and manage your subscriptions.</p></div>
+    </section>
+  {% endif %}
 {% endblock %}

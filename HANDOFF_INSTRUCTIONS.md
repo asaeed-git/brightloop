@@ -3,37 +3,36 @@
 ## 1. Project snapshot
 
 Brightloop is a subscription-management web app for the hackathon problem statement.
-A1–A5, B1, and B2 are merged on `main`. Developer 2 has implemented Milestone B3 (Recurring Billing Engine)
-and B4 (Invoices) on branch `arhan/recurring-billing-invoices`.
-158 automated tests pass against local PostgreSQL in ~6.2s.
+Milestones A1–A6 (Abbas) and B1–B4 (Syed) are merged on `main`.
+168 automated tests pass against local PostgreSQL in ~2.7s.
 
 Current stack: Python 3.14.4, Django 5.2.18, PostgreSQL 17.11, server-rendered HTML. Exact dependencies are pinned in requirements.txt.
 
 ## 2. Ownership and scope
 
-Developer 1: Abbas Saeed — platform, authentication, catalog, plans, quotations, subscription lifecycle (A1–A6).
+Developer 1: Abbas Saeed — platform, authentication, catalog, plans, quotations, subscription lifecycle, customer subscription experience (A1–A6).
 Developer 2: Syed Arhan — shared UI, pricing/taxes/discounts, billing, invoices, payments, reporting (B1–B6).
 See WORK_DIVISION.md for full responsibilities and cross-module change rules.
 
 ## 3. Repository map
 
-Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
+Active checkout: C:\Users\abbas\Desktop\brightloop.
 
 - config/: settings, URL routing, WSGI/ASGI, test settings.
-- accounts/: custom user, database constraints, password validator, role/query guards, admin forms, public signup/login/logout/reset, throttling, tests.
+- accounts/: custom user, database constraints, password validator, role/query guards, admin forms, public signup/login/logout/reset, profile view and editing, throttling, tests.
 - catalog/: products, priced variants, customer directory, server-side cost-price confidentiality, tests.
 - plans/: 4 billing intervals, availability dates, lifecycle policies, quotation templates and lines, pricing previews.
-- subscriptions/: subscription lifecycle (DRAFT → QUOTATION → CONFIRMED → ACTIVE → CLOSED), lines, pause/resume, early close, renewal, quotation conversion, pricing calculation integration.
+- subscriptions/: subscription lifecycle (DRAFT → QUOTATION → CONFIRMED → ACTIVE → CLOSED), lines, pause/resume, early close, renewal, quotation conversion, seat quantity update with min seat enforcement, customer self-service actions, linked invoice display, pricing calculation integration.
 - pricing/: exact pure calculation service and 18 tests; immutable Charge/Discount/LineTotal/PriceTotal values.
 - billing/: TaxRate, DiscountRule, Invoice, InvoiceLine, and BillingRunRecord models, anti-duplication unique constraints, recurring billing runner, admin and staff views, customer "My Invoices" portal, tests.
 - core/: home, database readiness, test_ui.
 - templates/:
-  - base.html: responsive shell, role-aware navigation (Plans, Products, Subscriptions, Invoices, Billing Runs, Customers, Tax Rates, Discounts, My Invoices, Admin).
-  - core/home.html: workspace landing page.
-  - accounts/: signup, login, password reset flow templates.
+  - base.html: responsive shell, role-aware navigation (Plans, Products, Subscriptions, Invoices, Billing Runs, Customers, Tax Rates, Discounts, My Invoices, Account, Admin).
+  - core/home.html: workspace landing page with role-specific dashboards.
+  - accounts/: signup, login, password reset flow templates, profile.html.
   - catalog/: product list, product detail, product form, variant form, customer list, customer detail.
   - plans/: plan list, plan detail, plan form, template list, template detail, template form.
-  - subscriptions/: subscription list, subscription detail, subscription form, subscription from template.
+  - subscriptions/: subscription list, subscription detail with customer action buttons, subscription form, subscription from template.
   - billing/: tax rate list & form, discount rule list & form, invoice list, invoice detail, invoice print layout, customer invoice list, customer invoice detail, billing run list.
   - components/: form_fields.html, empty_state.html.
 - core/static/brightloop/app.css: shared UI design system.
@@ -54,12 +53,13 @@ Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
 - A5: Subscription Lifecycle — canonical lifecycle states, upfront periods, pause/resume, renewals, template conversion.
 - B3: Recurring Billing Engine — due-period selection (`next_billing_date <= today`), atomic transactional processing, schedule advance, expiry auto-closure, and audit logging.
 - B4: Invoices — immutable snapshot models, anti-duplication database constraint `(subscription, period_start)`, staff management, print view, and customer "My Invoices" portal.
-- 158 tests pass in ~6.2s against local PostgreSQL.
+- A6: Customer Subscription Experience — `/accounts/profile/` profile management, self-serve quote confirmation, pause/resume, early cancellation enforcement, seat quantity updates enforcing plan minimums, linked invoices in subscription detail.
+- 168 tests pass in ~2.7s against local PostgreSQL.
 - Ruff check and format pass across 93 files, Django system check passes with 0 issues.
 
-**In progress:** B5 Payments & Balances.
+**In progress / Next:** B5 Payments & Balances (Developer 2).
 
-**Unstarted:** B6 Reports & scale testing.
+**Unstarted:** B6 Reports & scale testing (Developer 2).
 
 ## 5. Technical contracts and decisions
 
@@ -67,6 +67,8 @@ Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
 - Immutable snapshots: `InvoiceLine` stores frozen unit price, gross, discount, net, tax, and total.
 - Recurring worker advances `current_period_start`, `current_period_end`, and `next_billing_date` atomically upon successful invoice creation.
 - Subscriptions with `expiry_date` reached auto-close if `auto_close_on_expiry=True`, or stop future scheduling.
+- Customer self-serve actions strictly scoped to `request.user` via `scope_to_customer` and object ownership checks.
+- Minimum seat constraints enforced server-side before updating subscription line quantities.
 
 ## 6. Run and verification instructions
 
@@ -80,5 +82,5 @@ Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared.
 
 ## 7. Handoff checkpoint
 
-October 31, 2026. Branch: `arhan/recurring-billing-invoices`.
-158 tests passing against PostgreSQL 17.11. All checks clean.
+October 31, 2026. Branch: `main`.
+168 tests passing against PostgreSQL 17.11. All checks clean.

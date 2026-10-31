@@ -552,3 +552,163 @@ class SubscriptionViewTests(TestCase):
         sub2.refresh_from_db()
         self.assertEqual(sub2.status, Subscription.Status.ACTIVE)
         self.assertEqual(sub2.current_period_start, datetime.date(2026, 11, 1))
+
+    def test_customer_can_pause_and_resume_own_subscription(self):
+        self.sub1.status = Subscription.Status.ACTIVE
+        self.sub1.can_pause = True
+        self.sub1.save()
+
+        self.client.force_login(self.customer1)
+        # Pause
+        resp = self.client.post(
+            reverse(
+                "subscriptions:subscription_transition",
+                kwargs={"pk": self.sub1.pk, "action": "pause"},
+            ),
+            {"reason": "Vacation pause"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.sub1.refresh_from_db()
+        self.assertTrue(self.sub1.is_paused)
+        self.assertEqual(self.sub1.pause_reason, "Vacation pause")
+
+        # Resume
+        resp = self.client.post(
+            reverse(
+                "subscriptions:subscription_transition",
+                kwargs={"pk": self.sub1.pk, "action": "resume"},
+            ),
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.sub1.refresh_from_db()
+        self.assertFalse(self.sub1.is_paused)
+
+    def test_customer_can_cancel_subscription_when_permitted(self):
+        self.sub1.status = Subscription.Status.ACTIVE
+        self.sub1.can_early_close = True
+        self.sub1.save()
+
+        self.client.force_login(self.customer1)
+        resp = self.client.post(
+            reverse(
+                "subscriptions:subscription_transition",
+                kwargs={"pk": self.sub1.pk, "action": "close"},
+            ),
+            {"reason": "Moving out of region"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.sub1.refresh_from_db()
+        self.assertEqual(self.sub1.status, Subscription.Status.CLOSED)
+        self.assertEqual(self.sub1.close_reason, "Moving out of region")
+
+    def test_customer_cannot_cancel_subscription_when_early_close_disallowed(self):
+        self.sub1.status = Subscription.Status.ACTIVE
+        self.sub1.can_early_close = False
+        self.sub1.start_date = timezone.localdate()
+        self.sub1.expiry_date = timezone.localdate() + datetime.timedelta(days=180)
+        self.sub1.save()
+
+        self.client.force_login(self.customer1)
+        resp = self.client.post(
+            reverse(
+                "subscriptions:subscription_transition",
+                kwargs={"pk": self.sub1.pk, "action": "close"},
+            ),
+            {"reason": "Trying to cancel locked term"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.sub1.refresh_from_db()
+        self.assertEqual(self.sub1.status, Subscription.Status.ACTIVE)
+        self.assertContains(resp, "does not permit early cancellation")
+
+    def test_customer_can_update_line_quantity(self):
+        self.sub1.status = Subscription.Status.ACTIVE
+        self.sub1.save()
+        line = self.sub1.lines.first()
+
+        self.client.force_login(self.customer1)
+        resp = self.client.post(
+            reverse(
+                "subscriptions:subscription_line_update_quantity",
+                kwargs={"pk": self.sub1.pk, "line_pk": line.pk},
+            ),
+            {"quantity": 4},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        line.refresh_from_db()
+        self.assertEqual(line.quantity, 4)
+
+    def test_customer_update_quantity_below_plan_min_rejected(self):
+        self.plan.min_quantity = 3
+        self.plan.save()
+        self.sub1.status = Subscription.Status.ACTIVE
+        self.sub1.save()
+        line = self.sub1.lines.first()
+
+        self.client.force_login(self.customer1)
+        resp = self.client.post(
+            reverse(
+                "subscriptions:subscription_line_update_quantity",
+                kwargs={"pk": self.sub1.pk, "line_pk": line.pk},
+            ),
+            {"quantity": 2},  # 2 < min_quantity 3
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        line.refresh_from_db()
+        self.assertEqual(line.quantity, 1)  # unchanged
+        self.assertContains(resp, "minimum required seats")
+
+    def test_customer_cannot_modify_other_customer_subscription(self):
+        self.client.force_login(self.customer2)
+        # Attempt to pause customer 1's subscription
+        resp = self.client.post(
+            reverse(
+                "subscriptions:subscription_transition",
+                kwargs={"pk": self.sub1.pk, "action": "pause"},
+            ),
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 404)
+
+        # Attempt to update line quantity on customer 1's subscription
+        line = self.sub1.lines.first()
+        resp_line = self.client.post(
+            reverse(
+                "subscriptions:subscription_line_update_quantity",
+                kwargs={"pk": self.sub1.pk, "line_pk": line.pk},
+            ),
+            {"quantity": 10},
+            follow=True,
+        )
+        self.assertEqual(resp_line.status_code, 404)
+
+    def test_linked_invoices_rendered_in_subscription_detail(self):
+        from billing.models import Invoice
+
+        inv = Invoice.objects.create(
+            customer=self.customer1,
+            subscription=self.sub1,
+            number="INV-202610-0999",
+            period_start=datetime.date(2026, 10, 1),
+            period_end=datetime.date(2026, 11, 1),
+            issue_date=datetime.date(2026, 10, 1),
+            due_date=datetime.date(2026, 10, 16),
+            subtotal=Decimal("180.00"),
+            total=Decimal("180.00"),
+            status=Invoice.Status.CONFIRMED,
+        )
+
+        self.client.force_login(self.customer1)
+        resp = self.client.get(
+            reverse("subscriptions:subscription_detail", kwargs={"pk": self.sub1.pk})
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "INV-202610-0999")
+        self.assertContains(resp, "₹180.00")
+        self.assertContains(resp, reverse("billing:customer_invoice_detail", kwargs={"pk": inv.pk}))

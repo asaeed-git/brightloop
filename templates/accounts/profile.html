@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Account Profile · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <p class="eyebrow">Account</p>
+    <h1>Your Account Profile</h1>
+    <p class="muted">Manage your personal details and view your subscription activity.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-bottom:32px">
+    <!-- Left Column: Edit Profile Details -->
+    <div class="panel">
+      <h3>Personal Information</h3>
+      <form method="post" novalidate style="margin-top:16px">
+        {% csrf_token %}
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Email Address</label>
+          <input type="email" value="{{ user.email }}" disabled style="background:var(--surface-sunken, #f8fafc);cursor:not-allowed">
+          <small class="muted" style="display:block;margin-top:4px">Email address is your primary login identifier.</small>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Account Role</label>
+          <span class="badge badge--accent">{{ user.get_role_display }}</span>
+        </div>
+
+        {% include 'components/form_fields.html' with form=form %}
+
+        <div style="margin-top:24px">
+          <button type="submit" class="button button--primary">Save Profile Details</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Right Column: Account Snapshot -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="panel">
+        <h3>Subscription Snapshot</h3>
+        <ul style="list-style:none;padding:0;margin:16px 0 0;display:flex;flex-direction:column;gap:12px;font-size:14px">
+          <li style="display:flex;justify-content:space-between;align-items:center">
+            <span>Active Subscriptions:</span>
+            <strong><a href="{% url 'subscriptions:subscription_list' %}?status=ACTIVE">{{ active_subs_count }}</a></strong>
+          </li>
+          {% if paused_subs_count > 0 %}
+            <li style="display:flex;justify-content:space-between;align-items:center">
+              <span>Paused Subscriptions:</span>
+              <strong style="color:var(--warning, #d97706)"><a href="{% url 'subscriptions:subscription_list' %}?status=PAUSED">{{ paused_subs_count }}</a></strong>
+            </li>
+          {% endif %}
+          <li style="display:flex;justify-content:space-between;align-items:center">
+            <span>Pending Quotations:</span>
+            <strong><a href="{% url 'subscriptions:subscription_list' %}?status=QUOTATION">{{ pending_quotes_count }}</a></strong>
+          </li>
+          <li style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:10px">
+            <span>Invoices Awaiting Payment:</span>
+            {% if user.role == 'CUSTOMER' %}
+              <strong><a href="{% url 'billing:customer_invoice_list' %}">{{ invoices_due_count }}</a></strong>
+            {% else %}
+              <strong><a href="{% url 'billing:invoice_list' %}?status=CONFIRMED">{{ invoices_due_count }}</a></strong>
+            {% endif %}
+          </li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h3>Security</h3>
+        <p class="muted" style="font-size:13px;margin:0 0 12px">Need to update your password? Request a secure password reset link.</p>
+        <a href="{% url 'accounts:password_reset' %}" class="button" style="width:100%;text-align:center">Reset Password</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}
