@@ -44,11 +44,11 @@ used for development and tests as well as planned hosting so concurrency tests a
 | core/ | Abbas | Home/readiness endpoints |
 | templates/core/home.html | Syed | Implemented workspace welcome screen |
 | templates/base.html, core/static/ | Syed | Implemented shared UI shell & design system |
-| catalog/, plans/, subscriptions/ | Abbas | Catalog and Plans implemented; subscriptions next |
-| pricing/ | Syed | Pure calculator implemented and integrated into template previews |
+| catalog/, plans/, subscriptions/ | Abbas | Catalog, Plans, and Subscriptions lifecycle implemented |
+| pricing/ | Syed | Pure calculator implemented and integrated into template & subscription previews |
 | billing/ | Syed | TaxRate & DiscountRule configuration models, forms, and admin/staff views implemented; recurring billing pending |
 | payments/, reporting/ | Syed | Planned modules |
-| docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.4, shared-ui, financial proposal, pricing v0.1 |
+| docs/contracts/ | Each domain owner; Abbas coordinates shared contracts | Platform v0.5, shared-ui, financial proposal, pricing v0.1 |
 
 Keep views thin, validation in forms or explicit input validators, business operations in
 service functions, and database constraints in models/migrations. Use the ORM and parameterized
@@ -81,7 +81,8 @@ Financial proposal v0.1 was approved as written according to the user's report a
 Its exact allocation and final-period rules supersede the previously open entries below.
 These are application policies, not organizer mandates. Approval is not implementation;
 the pure calculator is added in pricing/services.py, and tax/discount configuration tables
-and management views are added in billing/.
+and management views are added in billing/. Subscriptions lifecycle and quotation generation
+are implemented in subscriptions/.
 
 | Topic | Candidate default |
 | --- | --- |

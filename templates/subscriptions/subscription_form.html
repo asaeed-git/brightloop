@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <p class="eyebrow"><a href="{% url 'subscriptions:subscription_list' %}">← Subscriptions</a></p>
+    <h1>{{ title }}</h1>
+  </div>
+
+  <div class="panel" style="max-width:680px">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'components/form_fields.html' with form=form %}
+      <div style="display:flex;gap:12px;margin-top:24px">
+        <button type="submit" class="button button--primary">Save Subscription</button>
+        {% if subscription %}
+          <a href="{% url 'subscriptions:subscription_detail' pk=subscription.pk %}" class="button">Cancel</a>
+        {% else %}
+          <a href="{% url 'subscriptions:subscription_list' %}" class="button">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+{% endblock %}

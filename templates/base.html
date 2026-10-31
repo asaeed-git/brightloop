@@ -20,6 +20,7 @@
         <a href="{% url 'plans:plan_list' %}" {% if 'plans:' in request.resolver_match.view_name %}aria-current="page"{% endif %}><span aria-hidden="true">📋</span> Plans</a>
         <a href="{% url 'catalog:product_list' %}" {% if 'catalog:product' in request.resolver_match.view_name or 'catalog:variant' in request.resolver_match.view_name %}aria-current="page"{% endif %}><span aria-hidden="true">📦</span> Products</a>
         {% if user.is_authenticated and user.is_active %}
+          <a href="{% url 'subscriptions:subscription_list' %}" {% if 'subscriptions:' in request.resolver_match.view_name %}aria-current="page"{% endif %}><span aria-hidden="true">🔄</span> Subscriptions</a>
           {% if user.role == 'ADMIN' or user.role == 'STAFF' %}
             <a href="{% url 'catalog:customer_list' %}" {% if 'catalog:customer' in request.resolver_match.view_name %}aria-current="page"{% endif %}><span aria-hidden="true">👥</span> Customers</a>
             <a href="{% url 'billing:tax_list' %}" {% if 'billing:tax' in request.resolver_match.view_name %}aria-current="page"{% endif %}><span aria-hidden="true">🏷</span> Tax Rates</a>

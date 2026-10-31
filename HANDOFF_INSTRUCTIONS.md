@@ -2,9 +2,9 @@
 
 ## 1. Project snapshot
 
-Milestones A1–A4 (Platform, Public Authentication, Customers & Catalog, and Plans & Quotations) and Developer 2's B1 (Shared UI), B2 (Pure Pricing Calculator), and B2 (Tax & Discount Configuration in `billing`) are merged on `main` and locally verified. Brightloop is a subscription-management web app for the hackathon problem statement.
+Milestones A1–A5 (Platform, Public Authentication, Customers & Catalog, Plans & Quotation Templates, and Subscription Lifecycle) and Developer 2's B1 (Shared UI), B2 (Pure Pricing Calculator), and B2 (Tax & Discount Configuration in `billing`) are implemented and locally verified. Brightloop is a subscription-management web app for the hackathon problem statement.
 
-Current stack: Python 3.14.4, Django 5.2.18, PostgreSQL 17.11, server-rendered HTML. Exact dependencies are pinned in requirements.txt. Syed's B1 shared UI, B2 pricing calculator, and B2 billing config (`billing/`) were merged into `main`. Abbas's A1 platform, A2 public authentication, A3 catalog & customer views, and A4 plans & quotation templates are implemented.
+Current stack: Python 3.14.4, Django 5.2.18, PostgreSQL 17.11, server-rendered HTML. Exact dependencies are pinned in requirements.txt. Syed's B1 shared UI, B2 pricing calculator, and B2 billing config (`billing/`) were merged into `main`. Abbas's A1 platform, A2 public authentication, A3 catalog & customer views, A4 plans & quotation templates, and A5 subscription lifecycle are implemented. 151 automated tests pass against PostgreSQL in ~2.3s.
 
 ## 2. Ownership and scope
 
@@ -12,7 +12,7 @@ Developer 1: Abbas Saeed — platform, authentication, catalog, plans, quotation
 Developer 2: Syed Arhan — shared UI, pricing/taxes/discounts, billing, invoices, payments, reporting.
 See WORK_DIVISION.md for full responsibilities and cross-module change rules.
 
-Current assistant merged Syed's B1, B2 pricing calculator, and B2 billing configuration into `main`, addressed code review findings, implemented Abbas's A4 plans and quotation templates scope, and verified integration across both developers' modules.
+Current assistant merged Syed's B1, B2 pricing calculator, and B2 billing configuration into `main`, addressed code review findings, implemented Abbas's A4 plans, and completed Abbas's A5 subscription lifecycle milestone.
 
 ## 3. Repository map
 
@@ -28,24 +28,27 @@ Root: C:\Users\abbas\Desktop\brightloop.
 - accounts/: custom user, database constraints, password validator, role/query guards, admin forms, public signup/login/logout/reset, hardened throttling, migration, tests.
 - catalog/: products, priced variants, customer directory, server-side cost-price confidentiality, non-negative pricing validation, migration, forms, views, tests.
 - plans/: plans (daily/weekly/monthly/yearly), quotation templates, template lines, pricing calculator integration, migration, forms, views, tests.
+- subscriptions/: `Subscription` and `SubscriptionLine` models, database check constraints, lifecycle state machine (`DRAFT` → `QUOTATION` → `CONFIRMED` → `ACTIVE` → `CLOSED`), pause/resume, early close, renewal, quotation from template, live B2 pricing breakdown, views, forms, migrations, tests.
 - pricing/: pure pricing calculation service, cents allocation with largest remainder, comprehensive test suite.
 - billing/: TaxRate and DiscountRule models, database check constraints, forms, admin and staff CRUD views, migrations, tests.
 - core/: home, database readiness, test_ui.
 - templates/:
-  - base.html: responsive shell, role-aware navigation (Plans, Products, Customers, Tax Rates, Discounts, Admin), message notices.
+  - base.html: responsive shell, role-aware navigation (Plans, Products, Subscriptions, Customers, Tax Rates, Discounts, Admin), message notices.
   - core/home.html: workspace landing page.
   - accounts/: signup, login, password reset flow templates.
   - catalog/: product list, product detail, product form, variant form, customer list, customer detail.
   - plans/: plan list, plan detail, plan form, template list, template detail, template form.
+  - subscriptions/: subscription list (with status tabs), subscription detail (with lines, pure B2 pricing breakdown, and lifecycle action controls), subscription form, subscription from template.
   - billing/: tax rate list & form, discount rule list & form.
   - components/: form_fields.html, empty_state.html.
 - core/static/brightloop/app.css: shared UI design system.
 - scripts/local_postgres.py: isolated local database init/start/stop/status/check.
 - requirements.in / requirements.txt / pyproject.toml / .python-version: dependency and check baseline.
 - .github/workflows/checks.yml: GitHub CI workflow.
-- docs/contracts/: platform.md (v0.4), shared-ui.md, financial-proposal.md, pricing.md.
+- docs/contracts/: platform.md (v0.5), shared-ui.md, financial-proposal.md, pricing.md.
 - docs/reviews/: a2-a3-review.md: reproduced auth/catalog findings addressed by Abbas.
 - docs/handoffs/: abbas.md and arhan.md: scoped continuation notes.
+- docs/handoffs/developer-sync-oct31.md: team sync report.
 
 ## 4. Current status
 
@@ -54,17 +57,18 @@ Root: C:\Users\abbas\Desktop\brightloop.
 - Merged Syed's `arhan/shared-ui`, `arhan/pricing-calculator`, and `arhan/billing-config` into `main`.
 - A1: Platform and persistence — custom UUID/email user model, case-insensitive uniqueness, roles (`ADMIN`, `STAFF`, `CUSTOMER`), DB constraints for privilege escalation prevention.
 - B1: Shared UI — base layout, responsive CSS, components, accessible form rendering.
-- A2: Public authentication — public signup (forces `CUSTOMER` role), hardened throttled login (`accounts/throttle.py`), logout, password reset flow with email links, password validator (>=9 chars, uppercase, lowercase, special character, no digit required).
+- A2: Public authentication — public signup (forces `CUSTOMER` role), hardened throttled login (`accounts/throttle.py`), logout, password reset flow with email links, password validator.
 - A3: Customers & Catalog — `Product` and `ProductVariant` models with decimal pricing, non-negative DB check constraints, unique variant names per product, support for variant adjustments (+560.00 example), forms and responsive views, customer directory for staff/admin, server-side guarantee excluding confidential `cost_price` from customer view.
 - B2: Pricing Calculator — side-effect free calculation service (`pricing.services.calculate_price`) allocating fixed discounts in integer cents using largest remainder, rounding percentage discounts and taxes per line half-up to cents.
 - B2: Billing Configuration — `TaxRate` and `DiscountRule` models with check constraints, `TaxRateForm` and `DiscountRuleForm` with validation, Staff/Admin CRUD views, templates, navigation links in sidebar, and 29 unit tests in `billing/tests.py`.
 - A4: Plans & Quotation Templates — `Plan` model with 4 billing intervals (`DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`), non-negative base plan price, minimum quantity validation, availability dates (`available_from` / `available_until`), and configurable lifecycle flags (`can_pause`, `can_early_close`, `auto_close_on_expiry`, `can_renew`). `QuotationTemplate` model with `validity_days` and `QuotationTemplateLine` items. Live pricing calculation preview powered by B2 service.
-- All integrated tests pass against local PostgreSQL.
-- Ruff check and format pass, pip check passes, Django system check (`manage.py check`) passes with 0 issues.
+- A5: Subscription Lifecycle — `Subscription` and `SubscriptionLine` models with unique human-readable numbers (`SUB-YYYYMM-XXXX`), lifecycle state transitions (`DRAFT` → `QUOTATION` → `CONFIRMED` → `ACTIVE` → `CLOSED`), minimum quantity enforcement, quotation expiry validation, upfront billing period calculation with day clamping and contract clipping, pause/resume, early close restrictions, contract renewals, quotation creation from template, and live calculation preview using Syed's B2 calculation service.
+- 151 tests pass in ~2.3s against local PostgreSQL.
+- Ruff check and format pass, Django system check (`manage.py check`) passes with 0 issues.
 
-**In progress:** Next feature slice A5 (Subscription Lifecycle).
+**In progress:** Abbas's A6 (Customer Subscription Experience polish) / Syed's B3 (Recurring Billing).
 
-**Unstarted:** Subscriptions (A5), customer portal (A6), recurring billing worker (B3), invoices (B4), payments (B5), reporting (B6), scale/performance testing, deployment.
+**Unstarted:** Invoices (B4), payments (B5), reporting (B6), scale/performance testing, deployment.
 
 ## 5. Technical contracts and decisions
 
@@ -77,30 +81,24 @@ See FOUNDATION.md, docs/contracts/platform.md, docs/contracts/shared-ui.md, docs
 - Product line quantities must meet or exceed `Plan.min_quantity`.
 - Quotation templates bundle a plan and zero or more product/variant lines with default quantities and validity in days.
 - Previews consume `pricing.services.calculate_price` without database mutations or side-effects.
-- Tax and discount configuration lives in `billing/`. Scope is either `SUBSCRIPTION` or `PRODUCT`.
+- `Subscription` satisfies all model fields agreed with Developer 2 in `developer-sync-oct31.md`: `customer`, `plan`, `status`, `start_date`, `expiry_date`, `current_period_start`, `current_period_end`, `next_billing_date`, `payment_terms_days`, `can_pause`, `is_paused`, `auto_close_on_expiry`, `can_renew`.
+- Active billing selection contract for B3: select `Subscription.objects.filter(status='ACTIVE', is_paused=False, next_billing_date__lte=today)` for period `[current_period_start, current_period_end)`.
 
 ## 6. Recent meaningful changes
 
-- Merged `arhan/billing-config` into `main`, bringing in `TaxRate` and `DiscountRule` models, forms, staff/admin views, navigation, and tests.
-- Reconciled `config/settings.py`, `config/urls.py`, `templates/base.html`, `FOUNDATION.md`, and `HANDOFF_INSTRUCTIONS.md`.
-- Hardened `accounts/throttle.py` to use `REMOTE_ADDR` directly, preventing client-spoofed `X-Forwarded-For` headers from bypassing rate limits.
-- Fixed variant uniqueness validation in `catalog/forms.py` and `catalog/views.py` so duplicate variant names on the same product cleanly re-render with field errors instead of raising an unhandled `IntegrityError`.
-- Enforced non-negative effective sales price validation on `Product` and `ProductVariant`.
-- Created `plans` app with `Plan`, `QuotationTemplate`, and `QuotationTemplateLine` models, migrations, forms, views, and templates.
-- Added live quote pricing calculation preview to template detail view using B2's `calculate_price`.
+- Implemented `subscriptions` app (A5): `Subscription` and `SubscriptionLine` models, database constraints, lifecycle transitions, pause/resume, renewal, template conversion, pure B2 pricing preview, forms, views, templates, and admin registration.
+- Added 18 unit and integration tests in `subscriptions/tests.py` and regression test in `core/test_ui.py`.
+- Total test suite now: 151 tests passing against PostgreSQL 17.11.
 
 ## 7. Open issues and risks
 
-- Integrating quotation templates and billing configuration into the full subscription lifecycle (A5) and recurring billing worker (B3) is the next milestone.
+- B3 Recurring Billing can now directly connect to the `Subscription` and `SubscriptionLine` models.
 
 ## 8. Next actions
 
-1. Push merged `main` to `origin/main`.
-2. Begin A5 (Subscription Lifecycle):
-   - Model `Subscription` with unique numbers, customer link, plan, start/expiry dates, payment terms, status (`DRAFT`, `QUOTATION`, `CONFIRMED`, `ACTIVE`, `CLOSED`).
-   - Model `SubscriptionLine` with product, variant, quantity, agreed unit price.
-   - Quotation creation from template.
-   - Lifecycle transition state machine (draft -> quotation -> confirmed -> active -> closed) and action buttons.
+1. Commit and push A5 changes to `origin/main`.
+2. Await Syed's B3 recurring billing worker and B4 invoice snapshots.
+3. Complete A6 (Customer Portal "My Subscriptions" experience polish and self-serve actions).
 
 ## 9. Run and verification instructions
 
@@ -114,4 +112,4 @@ See FOUNDATION.md, docs/contracts/platform.md, docs/contracts/shared-ui.md, docs
 
 ## 10. Handoff checkpoint
 
-October 31, 2026. Branch: main. All tests passing against PostgreSQL. Clean working tree after merging `arhan/billing-config`.
+October 31, 2026. Branch: main. All 151 tests passing against PostgreSQL. Clean working tree after completing A5.

@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "catalog",
     "plans",
     "billing",
+    "subscriptions",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

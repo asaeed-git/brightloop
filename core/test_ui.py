@@ -34,6 +34,13 @@ class SharedUITests(SimpleTestCase):
                         active and role in [User.Role.ADMIN, User.Role.STAFF],
                     )
 
+    def test_subscriptions_navigation_requires_an_active_user(self):
+        for role in User.Role.values:
+            for active in [True, False]:
+                with self.subTest(role=role, active=active):
+                    html = self.render_home(User(role=role, is_active=active))
+                    self.assertEqual('href="/subscriptions/"' in html, active)
+
     def test_billing_navigation_requires_an_active_internal_user(self):
         for role in User.Role.values:
             for active in [True, False]:

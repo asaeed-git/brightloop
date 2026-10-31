@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+{% block title %}{{ subscription.number }} · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow"><a href="{% url 'subscriptions:subscription_list' %}">← Subscriptions</a></p>
+      <h1>{{ subscription.number }}</h1>
+      <p class="muted">
+        Customer: <strong>{{ subscription.customer.email }}</strong> ·
+        Plan: <strong><a href="{% url 'plans:plan_detail' pk=subscription.plan.pk %}">{{ subscription.plan.name }}</a></strong>
+        <span class="badge badge--accent">{{ subscription.plan.get_interval_display }}</span>
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      {% if subscription.status == 'ACTIVE' %}
+        {% if subscription.is_paused %}
+          <span class="badge badge--warning" style="font-size:14px;padding:6px 12px">PAUSED</span>
+        {% else %}
+          <span class="badge badge--success" style="font-size:14px;padding:6px 12px">ACTIVE</span>
+        {% endif %}
+      {% elif subscription.status == 'QUOTATION' %}
+        {% if subscription.is_quotation_expired %}
+          <span class="badge badge--error" style="font-size:14px;padding:6px 12px">EXPIRED QUOTATION</span>
+        {% else %}
+          <span class="badge badge--accent" style="font-size:14px;padding:6px 12px">QUOTATION</span>
+        {% endif %}
+      {% elif subscription.status == 'CONFIRMED' %}
+        <span class="badge" style="font-size:14px;padding:6px 12px">CONFIRMED</span>
+      {% elif subscription.status == 'DRAFT' %}
+        <span class="badge" style="font-size:14px;padding:6px 12px">DRAFT</span>
+      {% elif subscription.status == 'CLOSED' %}
+        <span class="badge badge--muted" style="font-size:14px;padding:6px 12px">CLOSED</span>
+      {% endif %}
+
+      {% if is_internal and subscription.status in 'DRAFT,QUOTATION' %}
+        <a href="{% url 'subscriptions:subscription_edit' pk=subscription.pk %}" class="button">Edit Terms</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- State Notices -->
+  {% if subscription.is_paused %}
+    <div class="notice notice--warning" style="margin-bottom:20px">
+      <strong>Service Paused:</strong> Paused on {{ subscription.pause_date }}.
+      {% if subscription.pause_reason %}Reason: <em>{{ subscription.pause_reason }}</em>{% endif %}
+    </div>
+  {% elif subscription.status == 'QUOTATION' %}
+    {% if subscription.is_quotation_expired %}
+      <div class="notice notice--error" style="margin-bottom:20px">
+        <strong>Quotation Expired:</strong> This quotation expired on {{ subscription.quotation_valid_until }}. Confirmation is blocked until staff extends validity.
+      </div>
+    {% else %}
+      <div class="notice notice--accent" style="margin-bottom:20px">
+        <strong>Pending Quotation:</strong> Issued on {{ subscription.quotation_date|default:'today' }}. Valid for acceptance through <strong>{{ subscription.quotation_valid_until }}</strong>.
+      </div>
+    {% endif %}
+  {% elif subscription.status == 'CLOSED' %}
+    <div class="notice" style="margin-bottom:20px">
+      <strong>Subscription Closed:</strong> Terminated on {{ subscription.close_date|default:'record date' }}.
+      {% if subscription.close_reason %}Reason: <em>{{ subscription.close_reason }}</em>{% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Lifecycle Actions Panel -->
+  <div class="panel" style="margin-bottom:24px;background:var(--surface-sunken, #f8fafc)">
+    <h3 style="margin-top:0">Lifecycle Actions</h3>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+
+      <!-- DRAFT ACTIONS -->
+      {% if subscription.status == 'DRAFT' and is_internal %}
+        <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='send_quote' %}" style="display:flex;gap:8px;align-items:center;margin:0">
+          {% csrf_token %}
+          <input type="number" name="validity_days" value="30" min="1" max="365" style="width:80px;height:36px;padding:4px 8px;font-size:13px" title="Quotation validity in days" placeholder="Days">
+          <button type="submit" class="button button--primary" style="min-height:36px">Issue Quotation</button>
+        </form>
+        <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='confirm' %}" style="margin:0">
+          {% csrf_token %}
+          <button type="submit" class="button" style="min-height:36px">Confirm Directly</button>
+        </form>
+        <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='close' %}" style="margin:0">
+          {% csrf_token %}
+          <input type="hidden" name="reason" value="Draft discarded">
+          <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Discard draft?')">Discard</button>
+        </form>
+      {% endif %}
+
+      <!-- QUOTATION ACTIONS -->
+      {% if subscription.status == 'QUOTATION' %}
+        {% if not subscription.is_quotation_expired %}
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='confirm' %}" style="margin:0">
+            {% csrf_token %}
+            <button type="submit" class="button button--primary" style="min-height:36px">
+              {% if is_internal %}Confirm Quotation{% else %}Accept Quotation{% endif %}
+            </button>
+          </form>
+        {% endif %}
+
+        {% if is_internal %}
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='send_quote' %}" style="display:flex;gap:8px;align-items:center;margin:0">
+            {% csrf_token %}
+            <input type="number" name="validity_days" value="30" min="1" max="365" style="width:80px;height:36px;padding:4px 8px;font-size:13px" placeholder="Days">
+            <button type="submit" class="button" style="min-height:36px">Extend Validity</button>
+          </form>
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='close' %}" style="margin:0">
+            {% csrf_token %}
+            <input type="hidden" name="reason" value="Quotation rejected / cancelled">
+            <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Reject quotation?')">Reject / Close</button>
+          </form>
+        {% endif %}
+      {% endif %}
+
+      <!-- CONFIRMED ACTIONS -->
+      {% if subscription.status == 'CONFIRMED' and is_internal %}
+        <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='activate' %}" style="display:flex;gap:8px;align-items:center;margin:0">
+          {% csrf_token %}
+          <label style="font-size:13px;font-weight:600">Start Date:</label>
+          <input type="date" name="start_date" value="{{ subscription.start_date|date:'Y-m-d' }}" style="height:36px;padding:4px 8px;font-size:13px">
+          <button type="submit" class="button button--primary" style="min-height:36px">Activate Subscription</button>
+        </form>
+        <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='close' %}" style="margin:0">
+          {% csrf_token %}
+          <input type="hidden" name="reason" value="Cancelled before activation">
+          <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Cancel subscription?')">Cancel</button>
+        </form>
+      {% endif %}
+
+      <!-- ACTIVE ACTIONS -->
+      {% if subscription.status == 'ACTIVE' %}
+        {% if not subscription.is_paused and subscription.can_pause %}
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='pause' %}" style="display:flex;gap:8px;align-items:center;margin:0">
+            {% csrf_token %}
+            <input type="text" name="reason" placeholder="Pause reason" style="height:36px;padding:4px 8px;font-size:13px">
+            <button type="submit" class="button" style="min-height:36px">Pause Service</button>
+          </form>
+        {% elif subscription.is_paused %}
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='resume' %}" style="margin:0">
+            {% csrf_token %}
+            <button type="submit" class="button button--primary" style="min-height:36px">Resume Service</button>
+          </form>
+        {% endif %}
+
+        {% if is_internal and subscription.can_renew %}
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='renew' %}" style="display:flex;gap:8px;align-items:center;margin:0">
+            {% csrf_token %}
+            <label style="font-size:13px;font-weight:600">New Expiry:</label>
+            <input type="date" name="new_expiry_date" required style="height:36px;padding:4px 8px;font-size:13px">
+            <button type="submit" class="button" style="min-height:36px">Renew</button>
+          </form>
+        {% endif %}
+
+        {% if is_internal and subscription.can_early_close %}
+          <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='close' %}" style="display:flex;gap:8px;align-items:center;margin:0">
+            {% csrf_token %}
+            <input type="text" name="reason" placeholder="Closure reason" style="height:36px;padding:4px 8px;font-size:13px">
+            <button type="submit" class="button" style="min-height:36px;color:var(--error)" onclick="return confirm('Terminate subscription?')">Close Subscription</button>
+          </form>
+        {% endif %}
+      {% endif %}
+
+      <!-- CLOSED ACTIONS -->
+      {% if subscription.status == 'CLOSED' and is_internal and subscription.can_renew %}
+        <form method="post" action="{% url 'subscriptions:subscription_transition' pk=subscription.pk action='renew' %}" style="display:flex;gap:8px;align-items:center;margin:0">
+          {% csrf_token %}
+          <label style="font-size:13px;font-weight:600">Reopen & Renew:</label>
+          <input type="date" name="new_expiry_date" required style="height:36px;padding:4px 8px;font-size:13px">
+          <button type="submit" class="button button--primary" style="min-height:36px">Reopen Subscription</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-bottom:32px">
+    <!-- Left Column: Details -->
+    <div class="panel">
+      <h3>Subscription Terms & Schedules</h3>
+      <dl style="display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;margin-top:16px">
+        <div>
+          <dt class="muted" style="font-size:12px;text-transform:uppercase">Contract Start</dt>
+          <dd style="font-size:15px;font-weight:600;margin:4px 0 0">{{ subscription.start_date|default:'—' }}</dd>
+        </div>
+        <div>
+          <dt class="muted" style="font-size:12px;text-transform:uppercase">Contract Expiry</dt>
+          <dd style="font-size:15px;font-weight:600;margin:4px 0 0">{{ subscription.expiry_date|default:'No fixed expiry (Open-ended)' }}</dd>
+        </div>
+        <div>
+          <dt class="muted" style="font-size:12px;text-transform:uppercase">Current Service Period</dt>
+          <dd style="font-size:15px;font-weight:600;margin:4px 0 0">
+            {% if subscription.current_period_start and subscription.current_period_end %}
+              {{ subscription.current_period_start }} to {{ subscription.current_period_end }}
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt class="muted" style="font-size:12px;text-transform:uppercase">Next Billing Execution</dt>
+          <dd style="font-size:15px;font-weight:600;margin:4px 0 0">{{ subscription.next_billing_date|default:'—' }}</dd>
+        </div>
+        <div>
+          <dt class="muted" style="font-size:12px;text-transform:uppercase">Payment Terms</dt>
+          <dd style="font-size:15px;font-weight:600;margin:4px 0 0">Net {{ subscription.payment_terms_days }} days</dd>
+        </div>
+        <div>
+          <dt class="muted" style="font-size:12px;text-transform:uppercase">Base Plan Recurring Fee</dt>
+          <dd style="font-size:15px;font-weight:600;margin:4px 0 0">₹{{ subscription.base_price }} / {{ subscription.plan.get_interval_display|lower }}</dd>
+        </div>
+        {% if subscription.tax_rate %}
+          <div>
+            <dt class="muted" style="font-size:12px;text-transform:uppercase">Tax Rate</dt>
+            <dd style="font-size:15px;font-weight:600;margin:4px 0 0">{{ subscription.tax_rate.name }} ({{ subscription.tax_rate.rate }}%)</dd>
+          </div>
+        {% endif %}
+        {% if subscription.discount_rule %}
+          <div>
+            <dt class="muted" style="font-size:12px;text-transform:uppercase">Discount Applied</dt>
+            <dd style="font-size:15px;font-weight:600;margin:4px 0 0">
+              {{ subscription.discount_rule.name }}
+              {% if subscription.discount_rule.kind == 'PERCENTAGE' %}({{ subscription.discount_rule.value }}%){% else %}(₹{{ subscription.discount_rule.value }}){% endif %}
+            </dd>
+          </div>
+        {% endif %}
+      </dl>
+
+      {% if subscription.notes %}
+        <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:14px">
+          <dt class="muted" style="font-size:12px;text-transform:uppercase">Notes</dt>
+          <dd style="margin:4px 0 0;white-space:pre-line">{{ subscription.notes }}</dd>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Right Column: Policies -->
+    <div class="panel">
+      <h3>Policy Restrictions</h3>
+      <ul style="list-style:none;padding:0;margin:16px 0 0;display:flex;flex-direction:column;gap:10px;font-size:14px">
+        <li>
+          {% if subscription.can_pause %}✔{% else %}✖{% endif %}
+          <strong>Pause Allowed:</strong> {{ subscription.can_pause|yesno:'Yes,No' }}
+        </li>
+        <li>
+          {% if subscription.can_early_close %}✔{% else %}✖{% endif %}
+          <strong>Early Close Allowed:</strong> {{ subscription.can_early_close|yesno:'Yes,No' }}
+        </li>
+        <li>
+          {% if subscription.can_renew %}✔{% else %}✖{% endif %}
+          <strong>Renewable:</strong> {{ subscription.can_renew|yesno:'Yes,No' }}
+        </li>
+        <li>
+          {% if subscription.auto_close_on_expiry %}✔{% else %}✖{% endif %}
+          <strong>Auto-close on Expiry:</strong> {{ subscription.auto_close_on_expiry|yesno:'Yes,No' }}
+        </li>
+        <li style="border-top:1px solid var(--line);padding-top:10px">
+          <strong>Plan Minimum Quantity:</strong> {{ subscription.plan.min_quantity }} unit{{ subscription.plan.min_quantity|pluralize }}
+          {% if subscription.total_quantity < subscription.plan.min_quantity %}
+            <br><span style="color:var(--error);font-size:12px">⚠️ Current lines total {{ subscription.total_quantity }}, which is under the minimum.</span>
+          {% endif %}
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Subscription Line Items Table -->
+  <div class="panel" style="margin-bottom:32px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin:0">Product Line Items</h2>
+      <span class="muted" style="font-size:14px">Total Units / Seats: <strong>{{ subscription.total_quantity }}</strong></span>
+    </div>
+
+    {% if lines %}
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Subscription Lines">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Product</th>
+              <th scope="col">Variant</th>
+              <th scope="col" class="amount">Unit Price</th>
+              <th scope="col" style="text-align:center">Quantity</th>
+              <th scope="col" class="amount">Line Gross</th>
+              {% if is_internal and subscription.status in 'DRAFT,QUOTATION' %}
+                <th scope="col">Action</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in lines %}
+              <tr>
+                <td><strong>{{ line.product.name }}</strong></td>
+                <td>
+                  {% if line.variant %}
+                    <span class="badge badge--accent">{{ line.variant.name }}</span>
+                    {% if line.variant.price_extra != 0 %}
+                      <small class="muted">(+₹{{ line.variant.price_extra }})</small>
+                    {% endif %}
+                  {% else %}
+                    <span class="muted">Standard</span>
+                  {% endif %}
+                </td>
+                <td class="amount">₹{{ line.unit_price }}</td>
+                <td style="text-align:center">{{ line.quantity }}</td>
+                <td class="amount"><strong>₹{{ line.line_gross }}</strong></td>
+                {% if is_internal and subscription.status in 'DRAFT,QUOTATION' %}
+                  <td>
+                    <form method="post" action="{% url 'subscriptions:subscription_line_delete' pk=subscription.pk line_pk=line.pk %}" style="margin:0">
+                      {% csrf_token %}
+                      <button type="submit" class="button" style="min-height:28px;padding:2px 8px;font-size:12px;color:var(--error)" onclick="return confirm('Remove line item?')">Remove</button>
+                    </form>
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% include 'components/empty_state.html' with empty_title="No lines added" empty_description="This subscription currently has no product line items." %}
+    {% endif %}
+
+    <!-- Add Line Form (Staff only for Draft/Quotation) -->
+    {% if is_internal and subscription.status in 'DRAFT,QUOTATION' and line_form %}
+      <div style="margin-top:24px;border-top:1px solid var(--line);padding-top:20px">
+        <h3>+ Add Product Line</h3>
+        <form method="post" action="{% url 'subscriptions:subscription_line_add' pk=subscription.pk %}" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
+          {% csrf_token %}
+          <div style="flex:2;min-width:200px">
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Product</label>
+            {{ line_form.product }}
+          </div>
+          <div style="flex:2;min-width:200px">
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Variant (optional)</label>
+            {{ line_form.variant }}
+          </div>
+          <div style="flex:1;min-width:80px">
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Quantity</label>
+            {{ line_form.quantity }}
+          </div>
+          <div style="flex:1;min-width:100px">
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Unit Price</label>
+            {{ line_form.unit_price }}
+          </div>
+          <button type="submit" class="button button--primary" style="min-height:44px">Add Line</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Pricing Breakdown Panel (Pure B2 Calculator) -->
+  {% if pricing %}
+    <div class="panel" style="max-width:500px;margin-left:auto">
+      <h2>Cycle Pricing Summary</h2>
+      <p class="muted" style="font-size:13px">Official cycle amount calculated with B2 financial engine.</p>
+      
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+        <dl style="display:grid;grid-template-columns:1fr auto;gap:8px;font-size:14px;margin:0">
+          <dt>Base Recurring Plan Fee:</dt>
+          <dd class="amount">₹{{ subscription.base_price }}</dd>
+
+          {% if lines %}
+            <dt>Product Lines Gross:</dt>
+            <dd class="amount">₹{{ pricing.subtotal }}</dd>
+          {% endif %}
+
+          {% if pricing.discount > 0 %}
+            <dt style="color:var(--success, #16a34a)">Discount Applied ({{ subscription.discount_rule.name }}):</dt>
+            <dd class="amount" style="color:var(--success, #16a34a)">-₹{{ pricing.discount }}</dd>
+          {% endif %}
+
+          <dt style="font-weight:600">Taxable Net:</dt>
+          <dd class="amount" style="font-weight:600">₹{{ pricing.net }}</dd>
+
+          {% if pricing.tax > 0 %}
+            <dt>Taxes ({{ subscription.tax_rate.rate }}%):</dt>
+            <dd class="amount">₹{{ pricing.tax }}</dd>
+          {% endif %}
+
+          <dt style="font-weight:750;font-size:16px;border-top:2px solid var(--line);padding-top:10px">Total / Cycle:</dt>
+          <dd class="amount" style="font-weight:750;font-size:20px;color:var(--accent);border-top:2px solid var(--line);padding-top:10px">
+            ₹{{ pricing.total }}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

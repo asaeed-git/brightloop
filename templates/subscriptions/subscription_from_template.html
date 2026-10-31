@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Create Quotation from Template · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <p class="eyebrow"><a href="{% url 'subscriptions:subscription_list' %}">← Subscriptions</a></p>
+    <h1>Create Quotation from Template</h1>
+    <p class="muted">Generate a new customer quotation pre-populated with a plan and standard product lines.</p>
+  </div>
+
+  <div class="panel" style="max-width:640px">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'components/form_fields.html' with form=form %}
+      <div style="display:flex;gap:12px;margin-top:24px">
+        <button type="submit" class="button button--primary">Generate Quotation</button>
+        <a href="{% url 'subscriptions:subscription_list' %}" class="button">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

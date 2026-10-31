@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Subscriptions · Brightloop{% endblock %}
+{% block content %}
+  <div class="page-heading" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="eyebrow">Subscriptions</p>
+      <h1>{% if is_internal %}Subscription Directory{% else %}My Subscriptions{% endif %}</h1>
+      <p class="muted">
+        {% if is_internal %}
+          Manage customer subscriptions, quotations, lifecycle states, and billing schedules.
+        {% else %}
+          View your subscriptions, active plans, and pending quotations.
+        {% endif %}
+      </p>
+    </div>
+    {% if is_internal %}
+      <div style="display:flex;gap:8px">
+        <a href="{% url 'subscriptions:subscription_from_template' %}" class="button">Create from Template</a>
+        <a href="{% url 'subscriptions:subscription_create' %}" class="button button--primary">+ New Subscription</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Status Filter Tabs -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+    <a href="{% url 'subscriptions:subscription_list' %}" class="button {% if current_status == 'ALL' %}button--primary{% endif %}" style="min-height:36px;font-size:13px">
+      All <span class="badge" style="margin-left:4px">{{ counts.ALL }}</span>
+    </a>
+    <a href="{% url 'subscriptions:subscription_list' %}?status=ACTIVE" class="button {% if current_status == 'ACTIVE' %}button--primary{% endif %}" style="min-height:36px;font-size:13px">
+      Active <span class="badge badge--success" style="margin-left:4px">{{ counts.ACTIVE }}</span>
+    </a>
+    <a href="{% url 'subscriptions:subscription_list' %}?status=QUOTATION" class="button {% if current_status == 'QUOTATION' %}button--primary{% endif %}" style="min-height:36px;font-size:13px">
+      Quotations <span class="badge badge--accent" style="margin-left:4px">{{ counts.QUOTATION }}</span>
+    </a>
+    <a href="{% url 'subscriptions:subscription_list' %}?status=CONFIRMED" class="button {% if current_status == 'CONFIRMED' %}button--primary{% endif %}" style="min-height:36px;font-size:13px">
+      Confirmed <span class="badge" style="margin-left:4px">{{ counts.CONFIRMED }}</span>
+    </a>
+    <a href="{% url 'subscriptions:subscription_list' %}?status=PAUSED" class="button {% if current_status == 'PAUSED' %}button--primary{% endif %}" style="min-height:36px;font-size:13px">
+      Paused <span class="badge badge--warning" style="margin-left:4px">{{ counts.PAUSED }}</span>
+    </a>
+    <a href="{% url 'subscriptions:subscription_list' %}?status=DRAFT" class="button {% if current_status == 'DRAFT' %}button--primary{% endif %}" style="min-height:36px;font-size:13px">
+      Drafts <span class="badge" style="margin-left:4px">{{ counts.DRAFT }}</span>
+    </a>
+    <a href="{% url 'subscriptions:subscription_list' %}?status=CLOSED" class="button {% if current_status == 'CLOSED' %}button--primary{% endif %}" style="min-height:36px;font-size:13px">
+      Closed <span class="badge" style="margin-left:4px">{{ counts.CLOSED }}</span>
+    </a>
+  </div>
+
+  {% if subscriptions %}
+    <div class="panel">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Subscriptions Table">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Number</th>
+              {% if is_internal %}<th scope="col">Customer</th>{% endif %}
+              <th scope="col">Plan & Interval</th>
+              <th scope="col">Status</th>
+              <th scope="col">Current Period</th>
+              <th scope="col">Next Billing</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sub in subscriptions %}
+              <tr>
+                <td>
+                  <strong><a href="{% url 'subscriptions:subscription_detail' pk=sub.pk %}">{{ sub.number }}</a></strong>
+                </td>
+                {% if is_internal %}
+                  <td>
+                    <span>{{ sub.customer.email }}</span>
+                  </td>
+                {% endif %}
+                <td>
+                  <strong>{{ sub.plan.name }}</strong>
+                  <span class="badge">{{ sub.plan.get_interval_display }}</span>
+                </td>
+                <td>
+                  {% if sub.status == 'ACTIVE' %}
+                    {% if sub.is_paused %}
+                      <span class="badge badge--warning">Paused</span>
+                    {% else %}
+                      <span class="badge badge--success">Active</span>
+                    {% endif %}
+                  {% elif sub.status == 'QUOTATION' %}
+                    {% if sub.is_quotation_expired %}
+                      <span class="badge badge--error">Quote Expired</span>
+                    {% else %}
+                      <span class="badge badge--accent">Quotation</span>
+                    {% endif %}
+                  {% elif sub.status == 'CONFIRMED' %}
+                    <span class="badge">Confirmed</span>
+                  {% elif sub.status == 'DRAFT' %}
+                    <span class="badge">Draft</span>
+                  {% elif sub.status == 'CLOSED' %}
+                    <span class="badge badge--muted">Closed</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if sub.current_period_start and sub.current_period_end %}
+                    <small>{{ sub.current_period_start }} to {{ sub.current_period_end }}</small>
+                  {% elif sub.start_date %}
+                    <small>Starts {{ sub.start_date }}</small>
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if sub.next_billing_date %}
+                    <small>{{ sub.next_billing_date }}</small>
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'subscriptions:subscription_detail' pk=sub.pk %}" class="button button--compact">View</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    {% include 'components/empty_state.html' with empty_title="No subscriptions found" empty_description="No subscriptions match the selected criteria." %}
+  {% endif %}
+{% endblock %}

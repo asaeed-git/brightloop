@@ -1,4 +1,4 @@
-# Platform contract v0.4 (implemented)
+# Platform contract v0.5 (implemented)
 
 ## Routes
 
@@ -32,6 +32,14 @@
 | /plans/templates/<uuid:pk>/edit/ | GET, POST | Edit quotation template; ADMIN and STAFF only |
 | /plans/templates/<uuid:pk>/lines/new/ | POST | Add line to quotation template; ADMIN and STAFF only |
 | /plans/templates/<uuid:pk>/lines/<uuid:line_pk>/delete/ | POST | Remove line from quotation template; ADMIN and STAFF only |
+| /subscriptions/ | GET | Subscription directory; customers see own records, staff/admin sees all + status tabs |
+| /subscriptions/new/ | GET, POST | Create subscription draft; ADMIN and STAFF only |
+| /subscriptions/from-template/ | GET, POST | Create quotation from pre-configured template; ADMIN and STAFF only |
+| /subscriptions/<uuid:pk>/ | GET | Detail screen with line items, pure B2 pricing breakdown, and lifecycle action controls |
+| /subscriptions/<uuid:pk>/edit/ | GET, POST | Edit subscription draft/quotation terms; ADMIN and STAFF only |
+| /subscriptions/<uuid:pk>/lines/new/ | POST | Add product line item; ADMIN and STAFF only |
+| /subscriptions/<uuid:pk>/lines/<uuid:line_pk>/delete/ | POST | Remove line item; ADMIN and STAFF only |
+| /subscriptions/<uuid:pk>/transition/<action>/ | POST | Execute lifecycle transition (`send_quote`, `confirm`, `activate`, `pause`, `resume`, `close`, `renew`) |
 
 Other methods return 405. All POSTs require CSRF protection.
 
@@ -62,3 +70,16 @@ Each caller still applies its operation's role check. Inactive/anonymous/unknown
 - Lifecycle policy flags: `can_pause`, `can_early_close`, `auto_close_on_expiry`, and `can_renew`.
 - `QuotationTemplate` specifies an associated `Plan`, `validity_days`, and zero or more `QuotationTemplateLine` product items.
 - Template previews consume the side-effect free `pricing.services.calculate_price` function.
+
+## Subscriptions and Lifecycle Contract
+
+- `Subscription` uniquely tracks customer subscriptions (`SUB-YYYYMM-XXXX`) with status transitions:
+  `DRAFT` → `QUOTATION` → `CONFIRMED` → `ACTIVE` → `CLOSED`.
+- Minimum seat quantity is strictly enforced on transitions out of `DRAFT`.
+- Quotation validity expiration is strictly enforced: expired quotations reject confirmation until validity is extended.
+- Activating a confirmed subscription initializes `start_date`, `current_period_start`, and calculates `current_period_end` according to the plan interval (DAILY, WEEKLY, MONTHLY with calendar day clamping, YEARLY).
+- Upfront recurring billing interface: `next_billing_date` is initialized to `current_period_start`.
+- If contractual `expiry_date` is defined, `current_period_end` clips to `expiry_date`.
+- Pausing sets `is_paused = True` and records `pause_date` and reason; resuming clears them.
+- Creating quotation from template duplicates lines, sets unit snapshot prices, and computes validity window.
+- Pricing calculation uses `pricing.services.calculate_price` for live breakdown of base fee, line items, taxes, and discounts.
