@@ -5,7 +5,7 @@
 Abbas explicitly selected **Django + PostgreSQL** in the October 31, 2026 conversation and
 authorized development. This file records the initial implementation and proposed domain
 contracts for review. Syed Arhan's approval and a successful run on his machine are **pending**.
-The initial baseline is being committed for team review; identify it with `git log -1`.
+The initial source baseline is commit `29149d1`, published to origin/main for team review.
 Publishing this candidate does not mean the full M0 gate has passed.
 
 ## Technology baseline

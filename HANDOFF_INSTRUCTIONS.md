@@ -40,7 +40,7 @@ Root: C:\Users\abbas\Desktop\brightloop.
 ## 4. Current status
 
 **Implemented and verified locally:**
-- Git initialized on main; origin is https://github.com/asaeed-git/brightloop.git. Initial review-candidate commit prepared for sharing at the user's request.
+- Git initialized on main; origin is https://github.com/asaeed-git/brightloop.git. Initial review-candidate source commit 29149d1 was successfully pushed, and main tracks origin/main.
 - Isolated Python environment and exact package pins.
 - PostgreSQL cluster created inside .local/postgres on loopback port 55432; original system service untouched.
 - Migrations applied; migration state persisted across an actual database stop/start.
@@ -72,11 +72,11 @@ Vercel is a possible deployment target discussed with the user. No hosting chang
 - Added local setup helper, environment example, ignored-secret rules, requirements pins, tests, and CI definition.
 - Added AGENTS.md, FOUNDATION.md, README.md, platform contracts, and scoped handoffs.
 - A live anonymous admin login failed due to reading role on AnonymousUser. Fixed with an authenticated-user guard; regression test added; all 18 tests and live routes then passed.
-- Abbas requested pushing the starter to https://github.com/asaeed-git/brightloop for Syed to clone. Remote inspection found no existing refs. Credential exclusion was checked across all 46 candidate source files with no private-credential matches. Initial commit/push is being performed at this checkpoint; verify actual Git state before resuming. No teammate approval or deployment is claimed.
+- Abbas requested pushing the starter to https://github.com/asaeed-git/brightloop for Syed to clone. Remote inspection found no existing refs. Credential exclusion was checked across all 46 candidate source files with no private-credential matches. Initial source commit 29149d1 was successfully pushed to main. This documentation follow-up records the verified result. No teammate approval or deployment is claimed.
 
 ## 7. Open issues and risks
 
-- Initial baseline publication is in progress; confirm origin/main and the common commit before parallel feature implementation.
+- Initial source baseline 29149d1 is published. Syed must clone and review it, including any subsequent documentation commits, before parallel feature implementation.
 - Syed's approval and local run are pending. Shared UI is unstarted; full M0 acceptance is not claimed.
 - Auth throttling/public flows and all financial correctness/concurrency work remain; do not expose the starter as a production-ready app.
 - No final currency, complete domain schema, or financial contracts have been approved.
@@ -124,4 +124,4 @@ EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS, DEFAULT_FROM_EMAIL. Values 
 
 ## 10. Handoff checkpoint
 
-October 31, 2026 (Asia/Calcutta), preparing the initial foundation commit and authorized GitHub push on main. Use git status, git log -1, and git ls-remote origin refs/heads/main to verify publication; this file intentionally does not predict a commit hash or claim remote CI success. .env, .local, .venv, tmp, staticfiles are ignored; ignore behavior and private-credential exclusion were checked. Development web server was stopped after HTTP verification. The local PostgreSQL database is running on 127.0.0.1:55432; use scripts/local_postgres.py stop when finished. Do not assume a previous agent's process or settings remain unchanged; inspect before continuing.
+October 31, 2026 (Asia/Calcutta), after successful initial commit/push 29149d1 on main. The current documentation follow-up records publication; use git status and git log -1 for its final commit. Remote CI has not been checked. .env, .local, .venv, tmp, staticfiles are ignored; ignore behavior and private-credential exclusion were checked. Development web server was stopped after HTTP verification. The local PostgreSQL database is running on 127.0.0.1:55432; use scripts/local_postgres.py stop when finished. Do not assume a previous agent's process or settings remain unchanged; inspect before continuing.
