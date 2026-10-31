@@ -36,7 +36,8 @@ Do not run `init` again on this already-configured computer.
 
 Open http://127.0.0.1:8000/ for the starter page and http://127.0.0.1:8000/admin/ to sign in
 with the administrator you created. No default administrator or shared password is supplied.
-The starter page is deliberately minimal; Arhan owns the shared UI.
+The starter uses Arhan's shared responsive shell. Feature templates can follow
+`docs/contracts/shared-ui.md`; subscriptions and financial screens remain unimplemented.
 
 For later sessions:
 

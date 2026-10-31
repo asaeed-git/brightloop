@@ -1,5 +1,21 @@
 # Brightloop project handoff
 
+## Developer 2 local checkpoint — October 31, 2026
+
+Active checkout: C:\Users\LENOVO\Desktop\brightloop\shared, branch arhan/shared-ui,
+base 3b88994 from origin/main. Independent B1 UI draft and local setup are complete for
+review; see docs/handoffs/arhan.md for files, commands and results. On Syed's machine:
+Python 3.14.4/exact pins, PostgreSQL 17.11 isolated cluster, migrations and restart
+persistence verified; all 23 tests, lint/format/dependency/system/migration checks and
+static collection passed. Browser home/admin link and desktop/mobile layouts checked.
+No financial features implemented. UI and financial proposals await team review;
+full M0 approval is not claimed. User requested commit and publication of arhan/shared-ui;
+this checkpoint is included in that commit. Use git log/status and the remote branch
+to verify publication. No merge or branch-specific remote CI result is claimed.
+
+The sections below preserve Abbas's earlier checkpoint and machine-specific results.
+They do not describe the current Syed checkout; read docs/handoffs/arhan.md first here.
+
 ## 1. Project snapshot
 
 Foundation candidate 0.1 is implemented and locally verified. Brightloop is a subscription-management web app for the supplied hackathon problem statement.
