@@ -42,7 +42,21 @@ def start():
         raise SystemExit("Run init first.")
     if pg_ctl("status", check=False).returncode == 0:
         return
-    pg_ctl("-l", str(LOCAL / "postgres.log"), "-w", "start")
+    log_file = LOCAL / "postgres.log"
+    result = pg_ctl("-l", str(log_file), "-w", "start", check=False)
+    if result.returncode != 0:
+        log_content = (
+            log_file.read_text(encoding="utf-8", errors="replace")
+            if log_file.exists()
+            else "No log found"
+        )
+        raise SystemExit(
+            f"Failed to start local PostgreSQL server on port {PORT}.\n"
+            f"--- PostgreSQL Log ({log_file}) ---\n{log_content}\n"
+            "Common causes:\n"
+            "1. PowerShell was opened with 'Run as Administrator'. PostgreSQL refuses to run as Administrator on Windows. Use a standard PowerShell terminal.\n"
+            "2. Port 55432 is already in use by another running PostgreSQL instance."
+        )
 
 
 def init(force=False):
